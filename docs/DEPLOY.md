@@ -146,6 +146,67 @@ npm run db:migrate -- --name lo-que-cambiaste
 
 ---
 
+## Respaldos
+
+Un respaldo que nunca se restauró no es un respaldo: es un archivo. Por eso hay
+dos scripts y una prueba que los corre de punta a punta
+(`apps/api/test/backup.test.ts`): respalda, restaura en una base limpia y
+compara.
+
+```bash
+./scripts/backup.sh                       # a ./backups, conserva 14 copias
+BACKUP_DIR=/mnt/backups BACKUP_KEEP=30 ./scripts/backup.sh
+
+./scripts/restore.sh backups/men3d-20261001-120000.dump postgresql://.../destino
+```
+
+El volcado va en formato `custom` de PostgreSQL: comprimido, y permite
+restaurar tablas sueltas.
+
+**Dos cosas que hacen fallar a cualquier script de respaldo escrito a las
+apuradas**, y que estos resuelven:
+
+1. **La URL de Prisma lleva `?schema=public`.** `pg_dump` la rechaza con
+   `invalid URI query parameter`. Pasar `$DATABASE_URL` tal cual no funciona.
+2. **`pg_dump` se niega a volcar un servidor más nuevo que él.** Si tu cliente
+   es 16 y el servidor 17, no hay respaldo. El script lo comprueba antes y,
+   en desarrollo, usa el cliente que ya está dentro del contenedor.
+
+Restaurar encima de la base en uso pide confirmación escrita. Un error de
+tipeo no puede borrar la carta de un cliente.
+
+### Automatizarlo
+
+Un respaldo diario a las 3:30, con los últimos 30 días:
+
+```cron
+30 3 * * * cd /ruta/a/men-3d && BACKUP_DIR=/mnt/backups BACKUP_KEEP=30 ./scripts/backup.sh >> /var/log/men3d-backup.log 2>&1
+```
+
+**El respaldo tiene que salir de la máquina.** Una copia en el mismo disco que
+la base no sobrevive a lo que más probablemente pase: que se pierda esa
+máquina. Sincronizá `BACKUP_DIR` a un bucket:
+
+```bash
+aws s3 sync /mnt/backups s3://tu-bucket-respaldos/men3d/ --delete
+```
+
+### Lo que el volcado NO incluye
+
+Los modelos 3D y las imágenes. Con `STORAGE_DRIVER=s3` viven en el bucket, y
+ahí lo que corresponde es **activar versionado en el bucket**, que protege
+también del borrado accidental. Con `STORAGE_DRIVER=local` están en el disco
+del contenedor y se pierden al recrearlo: una razón más para no usar `local` en
+producción.
+
+### Probar la restauración, de verdad
+
+Agendá restaurar un respaldo en una base descartable cada tanto. La prueba
+automatizada cubre el mecanismo; lo que no cubre es que el respaldo de **ayer**
+en **tu** servidor sea bueno.
+
+---
+
 ## Extensiones de PostgreSQL
 
 La primera migración ejecuta `CREATE EXTENSION unaccent` y `pg_trgm`, que son

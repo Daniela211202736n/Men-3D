@@ -14,6 +14,12 @@ Ordenado por lo que bloquea cobrar el primer peso.
 
 ## 2. Necesario antes de abrir a clientes
 
+- **Respaldos: hechos.** `scripts/backup.sh` y `scripts/restore.sh`, con una
+  prueba que respalda, restaura en una base limpia y compara —incluida la
+  función de búsqueda y sus índices, que si no viajaran dejarían la base
+  restaurada rota en silencio. Falta agendarlo en el servidor que se elija y
+  sincronizar las copias fuera de esa máquina (ver DEPLOY.md).
+
 - **Pruebas automatizadas.** Hay 135 pruebas (`npm test`): totales e IVA, canje de
   puntos, máquina de estados del pedido, el adaptador de MercadoPago completo,
   el almacenamiento local y S3, las de integración del camino del dinero
@@ -24,7 +30,6 @@ Ordenado por lo que bloquea cobrar el primer peso.
   tanda de aislamiento encontró un agujero real: el ticket del KDS —que viaja en
   una URL— servía como sesión completa del backoffice. Falta un *end-to-end* del
   flujo escanear → ver en 3D → pedir.
-- **Backups** y un plan de restauración probado.
 - **KDS multi-instancia**: el bus de eventos sigue en memoria, así que la API no
   escala horizontalmente sin que una pantalla de cocina pierda pedidos.
 - **CSP**: `<model-viewer>` necesita WebAssembly y workers; una política mal

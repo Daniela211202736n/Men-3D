@@ -28,3 +28,7 @@ npm-debug.log*
 # declaraciones generadas por el chequeo de tipos
 apps/web/*.d.ts
 apps/web/src/**/*.d.ts
+
+# Respaldos de la base: nunca al repositorio.
+backups/
+*.dump
