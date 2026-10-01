@@ -20,6 +20,7 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 import { generateOrderCode, generateQrToken } from '../src/lib/ids.js';
+import { deleteTenantsBySlug } from '../src/modules/tenants/service.js';
 
 const prisma = new PrismaClient();
 
@@ -253,11 +254,10 @@ async function seedPlans() {
 }
 
 async function wipeDemoTenants() {
-  // El borrado en cascada del esquema se encarga de categorias, platos,
-  // pedidos, eventos y demas: alcanza con borrar el tenant.
-  const { count } = await prisma.tenant.deleteMany({
-    where: { slug: { in: DEMO_SLUGS } },
-  });
+  // Pasa por el borrado en orden de dependencias: la cascada sola choca contra
+  // las restricciones que protegen el historico de ventas (ver
+  // modules/tenants/service.ts).
+  const count = await deleteTenantsBySlug([...DEMO_SLUGS]);
   if (count > 0) console.log(`  tenants de demo anteriores borrados: ${count}`);
 }
 

@@ -2,31 +2,44 @@
 
 Definición ejecutable: [`apps/api/prisma/schema.prisma`](../apps/api/prisma/schema.prisma).
 
-## Portabilidad: SQLite en desarrollo, PostgreSQL en producción
+## PostgreSQL, con migraciones versionadas
 
-El MVP usa **SQLite** para que `npm run setup` deje todo andando sin instalar
-nada. El esquema evita a propósito todo lo que no es portable —enums nativos,
-arrays, columnas `Json`— así que pasar a PostgreSQL es cambiar una línea:
+`docker compose up -d` levanta una base local; `npm run db:deploy` aplica las
+migraciones de `apps/api/prisma/migrations/`.
 
-```prisma
-datasource db {
-  provider = "postgresql"   // antes: "sqlite"
-  url      = env("DATABASE_URL")
-}
-```
+El esquema evita enums nativos y arrays, y guarda las listas cortas como texto
+separado por comas. No es herencia de una base anterior: es lo que mantiene las
+migraciones baratas —agregar un valor a un enum nativo bloquea la tabla— y el
+vocabulario en un solo lugar, `@men3d/shared`, validado con zod en el borde.
 
 Dos consecuencias de esa decisión, documentadas donde importan:
 
 - **Los enums viajan como `String`.** El vocabulario válido vive en
   `@men3d/shared` (`OrderStatus`, `Allergen`, `DietTag`…) y se valida con zod en
-  el borde. En PostgreSQL se pueden promover a enums nativos sin tocar el código.
+  el borde.
 - **Las listas cortas se guardan separadas por comas** (`enabledLocales`,
   `serviceModes`, `features`). `lib/lists.ts` es el único archivo que conoce ese
-  detalle; en PostgreSQL pasan a `text[]` cambiando solo ese archivo.
+  detalle.
 
-Un detalle más al migrar: en SQLite `contains` se traduce a `LIKE`, que ya ignora
-mayúsculas en ASCII. En PostgreSQL hay que agregar `mode: 'insensitive'` en
-`buildDishWhere()` —o, mejor, un índice trigram para búsqueda difusa.
+**La búsqueda usa `mode: 'insensitive'`** en `buildDishWhere()`. No es opcional:
+sin eso, buscar "Milanesa" no encuentra "milanesa napolitana". Sigue siendo una
+búsqueda por subcadena —no ignora tildes ni tolera errores de tipeo—; para eso
+hacen falta las extensiones `unaccent` y `pg_trgm`.
+
+## Dar de baja un restaurante
+
+`prisma.tenant.delete()` **no alcanza**. La cascada intenta borrar los platos,
+pero `OrderItem.dishId` y `Dish.categoryId` son `onDelete: Restrict` a propósito
+—para que nadie borre un plato que figura en un pedido histórico— y PostgreSQL
+no garantiza el orden en que resuelve las cascadas.
+
+La salida no es aflojar las restricciones, que protegen el histórico de ventas,
+sino hacer explícito el único camino legítimo: `deleteTenantCompletely()` en
+`modules/tenants/service.ts` vacía de adentro hacia afuera (pedidos → platos →
+categorías → tenant) en una transacción.
+
+Para dejar de operar sin perder nada, `Tenant.isActive = false` saca al
+restaurante de circulación y conserva todo.
 
 ## Mapa de tablas
 

@@ -7,7 +7,7 @@
  *   /api/public/:slug/*                 — todo lo que ve el comensal (sin auth)
  *   /api/admin/*                        — backoffice (requiere JWT del tenant)
  *   POST /api/payments/webhook/:provider — notificaciones de la pasarela
- *   POST /upload  ·  GET /assets/:name  — modelos 3D e imagenes
+ *   POST /upload  ·  GET /media/:name   — modelos 3D e imagenes
  */
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';

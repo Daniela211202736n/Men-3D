@@ -41,8 +41,34 @@ const schema = z.object({
   PUBLIC_API_URL: z.string().url().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_MODEL: z.string().default('claude-opus-5-5'),
-  /** Carpeta donde se guardan los GLB/imagenes subidos en desarrollo. */
+  // --- almacenamiento de modelos 3D e imagenes -----------------------------
+  /**
+   * `local` guarda en disco y sirve desde la API: alcanza para desarrollo.
+   * `s3` sube a un bucket (S3, Cloudflare R2, DigitalOcean Spaces) y deja que
+   * el CDN sirva los modelos directo al navegador, que es lo que hay que hacer
+   * en produccion: un GLB servido desde Node es la forma mas rapida de arruinar
+   * el tiempo de carga en un celular.
+   */
+  STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+  /** Carpeta donde se guardan los GLB/imagenes con el driver `local`. */
   STORAGE_DIR: z.string().default(resolve(here, '../storage')),
+
+  S3_BUCKET: z.string().optional(),
+  S3_REGION: z.string().default('auto'),
+  /** Endpoint propio de R2/Spaces/MinIO. Vacio = AWS S3. */
+  S3_ENDPOINT: z.string().url().optional(),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
+  /**
+   * `true` para servidores que no resuelven el bucket por subdominio
+   * (MinIO y la mayoria de los compatibles).
+   */
+  S3_FORCE_PATH_STYLE: z.coerce.boolean().default(false),
+  /**
+   * Dominio publico desde el que se sirven los assets (el del CDN). Sin esto se
+   * arma la URL del bucket, que funciona pero no pasa por cache de borde.
+   */
+  CDN_PUBLIC_URL: z.string().url().optional(),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -91,6 +117,32 @@ if (env.PAYMENTS_PROVIDER === 'mercadopago') {
         'puede verificar que una notificacion de pago sea legitima.',
     );
   }
+}
+
+/**
+ * Elegir el bucket sin credenciales se descubre al arrancar, no cuando un
+ * restaurante intenta subir el modelo 3D de un plato.
+ */
+if (env.STORAGE_DRIVER === 's3') {
+  const faltantes: string[] = [];
+  if (!env.S3_BUCKET) faltantes.push('S3_BUCKET');
+  if (!env.S3_ACCESS_KEY_ID) faltantes.push('S3_ACCESS_KEY_ID');
+  if (!env.S3_SECRET_ACCESS_KEY) faltantes.push('S3_SECRET_ACCESS_KEY');
+  if (faltantes.length > 0) {
+    throw new Error(
+      `STORAGE_DRIVER=s3 requiere: ${faltantes.join(', ')}. Ver docs/DEPLOY.md.`,
+    );
+  }
+}
+
+if (isProduction && env.STORAGE_DRIVER === 'local') {
+  // No es un error fatal —se puede querer para una prueba— pero si se despliega
+  // asi, la carta va a cargar lenta y los modelos se pierden al recrear el
+  // contenedor.
+  console.warn(
+    '[storage] STORAGE_DRIVER=local en produccion: los modelos 3D se sirven ' +
+      'desde la API y viven en el disco del contenedor. Usar s3 (ver docs/DEPLOY.md).',
+  );
 }
 
 /** `true` cuando el access token es de sandbox. */

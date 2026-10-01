@@ -12,9 +12,13 @@ carta, precios, pedidos y métricas desde un backoffice.
 ## Arrancar en un minuto
 
 ```bash
-npm run setup     # instala, genera los modelos 3D de ejemplo, crea la base y la siembra
-npm run dev       # API en :4000 y PWA en :5173
+docker compose up -d   # PostgreSQL
+npm run setup          # instala, genera los modelos 3D, migra y siembra
+npm run dev            # API en :4000 y PWA en :5173
 ```
+
+(`npm run setup` ya levanta la base por vos; el primer comando es por si querés
+arrancarla sola.)
 
 Abrí <http://localhost:5173> y entrá a cualquiera de las dos cartas de demostración.
 
@@ -26,9 +30,14 @@ Abrí <http://localhost:5173> y entrá a cualquiera de las dos cartas de demostr
 | `cocina@la-parrilla-de-don-pepe.demo` | STAFF | PRO | Solo la pantalla de cocina            |
 | `hola@verdebowl.demo`    | OWNER | STARTER | Cómo se ve el producto con funciones bloqueadas |
 
-No hace falta ninguna clave de API: los pagos corren con un proveedor simulado y
-la IA es opcional (sin `ANTHROPIC_API_KEY` el sistema usa las reglas
-deterministas y las traducciones manuales).
+No hace falta ninguna clave de API: los pagos corren con un proveedor simulado,
+los modelos 3D se sirven desde la API, y la IA es opcional (sin
+`ANTHROPIC_API_KEY` el sistema usa las reglas deterministas y las traducciones
+manuales). Lo único que necesita es Docker, para la base.
+
+**¿Querés verlo como en producción?** `docker compose -f docker-compose.yml -f
+docker-compose.apps.yml up -d --build` levanta todo en contenedores en
+<http://localhost:8080>. Ver [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ---
 
@@ -94,6 +103,7 @@ men-3d/
 | [docs/UX-FLOWS.md](docs/UX-FLOWS.md)         | Flujos de usuario principales |
 | [docs/API.md](docs/API.md)                   | Referencia de endpoints |
 | [docs/PAYMENTS.md](docs/PAYMENTS.md)         | Pasarelas de pago: MercadoPago, webhooks y cómo agregar otra |
+| [docs/DEPLOY.md](docs/DEPLOY.md)             | Despliegue: Docker, variables, migraciones, bucket y CDN |
 | [docs/ROADMAP.md](docs/ROADMAP.md)           | Qué falta para producción, por prioridad |
 
 ---
@@ -108,15 +118,20 @@ men-3d/
 | `npm run build` | Compila los tres paquetes |
 | `npm run typecheck` | Chequeo de tipos de todo el monorepo |
 | `npm test` | Pruebas de la API |
+| `npm run db:up` / `npm run db:down` | Levanta o apaga PostgreSQL |
+| `npm run db:migrate` | Crea y aplica una migración nueva |
+| `npm run db:deploy` | Aplica las migraciones pendientes (producción) |
 | `npm run db:seed` | Vuelve a sembrar los datos de demostración |
+| `npm run db:reset` | Borra la base y la reconstruye desde las migraciones |
 | `npm run db:studio` | Explorador visual de la base |
 | `npm run models:sample` | Regenera los GLB de ejemplo |
 
 ## Configuración
 
 Copiá `.env.example` a `.env`. Todo tiene valores por defecto que funcionan en
-desarrollo; para producción hay que definir sí o sí `JWT_SECRET` (la API se niega
-a arrancar con el de desarrollo).
+desarrollo contra la base de `docker compose`. Para producción, la lista completa
+está en [docs/DEPLOY.md](docs/DEPLOY.md); la API se niega a arrancar con el
+`JWT_SECRET` de desarrollo o con una pasarela elegida sin credenciales.
 
 ---
 
@@ -129,11 +144,10 @@ está deliberadamente sin terminar:
   y verificación del cobro contra su API — ver [docs/PAYMENTS.md](docs/PAYMENTS.md).
   Por defecto corre el proveedor simulado para que la demo funcione sin
   credenciales. El adaptador de Stripe sigue declarado sin implementar.
-- **Base de datos**: SQLite para que el MVP arranque sin infraestructura. El
-  esquema no usa nada específico de SQLite, así que pasar a PostgreSQL es cambiar
-  una línea (ver [docs/DATABASE.md](docs/DATABASE.md)).
-- **Assets**: los modelos 3D se sirven desde la API. En producción van a un
-  bucket con CDN.
+- **Base de datos**: PostgreSQL, con migraciones versionadas.
+- **Assets**: en desarrollo se sirven desde la API; en producción van a un bucket
+  compatible con S3 (AWS, Cloudflare R2, Spaces) con CDN delante, cambiando solo
+  variables de entorno.
 - **KDS**: el bus de eventos es en memoria, así que funciona con una sola
   instancia de la API. Con varias hay que cambiarlo por Redis pub/sub.
 - **Auditoría de dependencias**: `npm audit` está limpio (0 vulnerabilidades).

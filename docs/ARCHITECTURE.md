@@ -28,8 +28,9 @@
                      └────────────────┘  └──────────────────┘
 
                      ┌────────────────┐
-                     │ CDN / bucket   │  modelos GLB · USDZ · fotos
-                     └────────────────┘
+                     │ CDN / bucket S3│  modelos GLB · USDZ · fotos
+                     └────────────────┘  (subida firmada directa; el archivo
+                                          nunca pasa por la API)
 ```
 
 ## 2. Por qué cada pieza
@@ -191,14 +192,14 @@ gráfico para lectores de pantalla.
 
 ## 11. Camino a producción
 
-1. **Base**: cambiar el provider de Prisma a `postgresql` y correr las
-   migraciones. El esquema ya es portable.
-2. **Assets**: subir los GLB a un bucket con CDN y guardar la URL pública.
-3. **Pagos**: MercadoPago ya está implementado; falta probarlo contra una cuenta
+1. ~~**Base**: PostgreSQL con migraciones versionadas.~~ Hecho.
+2. ~~**Assets**: bucket compatible con S3 con subida firmada y CDN.~~ Hecho
+   (`STORAGE_DRIVER=s3`).
+3. ~~**Imágenes**: Dockerfiles de API y PWA, migraciones como paso aparte.~~
+   Hecho — ver [DEPLOY.md](DEPLOY.md).
+4. **Pagos**: MercadoPago está implementado; falta probarlo contra una cuenta
    real y publicar la URL del webhook en su panel (ver [PAYMENTS.md](PAYMENTS.md)).
-4. **KDS**: cambiar el bus en memoria por Redis pub/sub para correr varias
-   instancias.
-5. **Despliegue**: la API en un contenedor detrás de un proxy (con `trustProxy`
-   ya activado en producción), la PWA como estático en el CDN.
+5. **KDS**: cambiar el bus en memoria por Redis pub/sub para correr varias
+   instancias. Es lo único que hoy impide escalar la API horizontalmente.
 6. **Observabilidad**: los logs ya son estructurados; falta enviarlos y agregar
    trazas y alertas sobre la tasa de error del checkout.

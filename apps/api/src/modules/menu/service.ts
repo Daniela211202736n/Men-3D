@@ -99,14 +99,18 @@ export function buildDishWhere(
 
   if (query.q) {
     const q = query.q;
-    // En SQLite `contains` se traduce a LIKE, que ya ignora mayusculas en
-    // ASCII. En PostgreSQL hay que agregar `mode: 'insensitive'` (ver
-    // docs/DATABASE.md) o un indice trigram para busqueda difusa.
+    // `mode: 'insensitive'` no es opcional: sin el, PostgreSQL distingue
+    // mayusculas y buscar "Milanesa" no encuentra "milanesa napolitana".
+    //
+    // Sigue siendo una busqueda por subcadena: no ignora tildes ni tolera
+    // errores de tipeo. Para eso hacen falta las extensiones `unaccent` y
+    // `pg_trgm` con un indice GIN — anotado en docs/ROADMAP.md.
+    const like = { contains: q, mode: 'insensitive' } as const;
     where.OR = [
-      { name: { contains: q } },
-      { description: { contains: q } },
-      { ingredients: { some: { name: { contains: q } } } },
-      { translations: { some: { name: { contains: q } } } },
+      { name: like },
+      { description: like },
+      { ingredients: { some: { name: like } } },
+      { translations: { some: { name: like } } },
     ];
   }
 

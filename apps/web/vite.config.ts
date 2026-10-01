@@ -77,11 +77,9 @@ export default defineConfig(({ mode }) => {
         // En desarrollo la PWA habla con la API por el mismo origen: sin CORS y
         // sin configurar nada en el navegador.
         '/api': { target: apiUrl, changeOrigin: true },
-        '/assets-api': {
-          target: apiUrl,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/assets-api/, '/assets'),
-        },
+        // Medios subidos desde el backoffice con el driver `local`.
+        '/media': { target: apiUrl, changeOrigin: true },
+        '/upload': { target: apiUrl, changeOrigin: true },
       },
     },
     build: { target: 'es2022', sourcemap: true },

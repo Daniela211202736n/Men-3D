@@ -1,11 +1,13 @@
 // ===========================================================================
 // Men-3D — esquema de datos (multi-tenant, una sola base)
 //
-// Portabilidad: el provider es `sqlite` para que el MVP arranque sin
-// infraestructura (`npm run setup` y listo). El esquema evita deliberadamente
-// todo lo que no es portable — enums nativos, arrays, Json — asi que pasar a
-// PostgreSQL en produccion es cambiar el `provider` de abajo por "postgresql"
-// y el DATABASE_URL. Ver docs/DATABASE.md.
+// Base: PostgreSQL. `docker compose up -d` levanta una local.
+//
+// El esquema sigue evitando enums nativos y arrays, y guarda las listas cortas
+// como texto separado por comas. No es herencia de SQLite: es lo que mantiene
+// las migraciones baratas (agregar un valor a un enum nativo bloquea la tabla)
+// y el vocabulario en un solo lugar, `@men3d/shared`, validado con zod en el
+// borde. Ver docs/DATABASE.md.
 //
 // Aislamiento entre restaurantes: cada tabla de negocio lleva `tenantId` y
 // todas las consultas pasan por `src/lib/tenant-scope.ts`, que lo inyecta.
@@ -13,10 +15,14 @@
 
 generator client {
   provider = "prisma-client-js"
+  // `native` para desarrollo; el target musl es el de la imagen Alpine con la
+  // que se despliega. Sin declararlo, el motor de consultas no arranca dentro
+  // del contenedor y el fallo recien aparece en el despliegue.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

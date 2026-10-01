@@ -8,6 +8,27 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+
+    services:
+      # Las pruebas de integracion tocan la base de verdad: liquidacion de
+      # pagos, idempotencia, borrado de un restaurante.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: men3d
+          POSTGRES_PASSWORD: men3d_ci
+          POSTGRES_DB: men3d_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U men3d -d men3d_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://men3d:men3d_ci@localhost:5432/men3d_test?schema=public
+
     steps:
       - uses: actions/checkout@v4
 
@@ -26,21 +47,44 @@ jobs:
         # La API y la PWA tipan contra sus declaraciones: tiene que ir primero.
         run: npm run build -w @men3d/shared
 
-      - name: Preparar la base de datos
-        run: npm run db:push -w @men3d/api
-        env:
-          DATABASE_URL: file:./prisma/ci.db
+      - name: Aplicar migraciones
+        run: npm run db:deploy
 
       - name: Chequeo de tipos
         run: npm run typecheck
 
       - name: Pruebas
         run: npm test
-        env:
-          DATABASE_URL: file:./prisma/ci.db
 
       - name: Compilación de producción
         run: npm run build
 
       - name: Auditoría de dependencias
         run: npm audit --audit-level=high
+
+  # Que las imagenes compilen es parte del contrato: un Dockerfile roto no se
+  # descubre al desplegar.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Construir la imagen de la API
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Construir la imagen de la PWA
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

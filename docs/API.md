@@ -161,9 +161,15 @@ código de respuesta decide si la pasarela reintenta — ver
 ## Archivos
 
 ```
-POST /upload          🔒  multipart; valida la firma binaria real
-GET  /assets/:name        solo nombres generados por el servidor
+POST /api/admin/assets/upload-ticket  🔒  permiso de subida
+POST /upload                          🔒  multipart (driver `local`)
+GET  /media/:name                         solo nombres generados por el servidor
+GET  /api/admin/assets/health         🔒  estado del almacenamiento
 ```
+
+El backoffice pide primero un permiso de subida y manda el archivo a donde ese
+permiso indique: a la API (driver `local`) o directo al bucket con una URL
+firmada (driver `s3`), sin pasar por el servidor. Ver [DEPLOY.md](DEPLOY.md).
 
 ---
 

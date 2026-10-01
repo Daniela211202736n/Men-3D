@@ -12,15 +12,43 @@ import {
   type LoyaltyReason,
 } from '@men3d/shared';
 
+import { Prisma } from '@prisma/client';
+
 import { badRequest } from '../../lib/errors.js';
 import { prisma } from '../../prisma.js';
 
+/**
+ * Devuelve la cuenta de puntos del comensal, creandola si es su primera vez.
+ *
+ * El `upsert` de Prisma no siempre se traduce a un `INSERT ... ON CONFLICT`
+ * atomico —con un `update` vacio, no califica— asi que dos peticiones
+ * simultaneas del mismo comensal nuevo pueden intentar crear la fila a la vez y
+ * una choca contra la restriccion de unicidad. Pasa de verdad: al abrir la
+ * carta, el saldo y el carrito se piden casi al mismo tiempo.
+ *
+ * La carrera no se evita, se absorbe: si el insert pierde, la fila ya existe y
+ * alcanza con leerla.
+ */
 export async function getOrCreateAccount(tenantId: string, guestId: string) {
-  return prisma.loyaltyAccount.upsert({
+  const existing = await prisma.loyaltyAccount.findUnique({
     where: { tenantId_guestId: { tenantId, guestId } },
-    create: { tenantId, guestId },
-    update: {},
   });
+  if (existing) return existing;
+
+  try {
+    return await prisma.loyaltyAccount.create({ data: { tenantId, guestId } });
+  } catch (error) {
+    // P2002 = violacion de restriccion unica: otra peticion llego primero.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      return prisma.loyaltyAccount.findUniqueOrThrow({
+        where: { tenantId_guestId: { tenantId, guestId } },
+      });
+    }
+    throw error;
+  }
 }
 
 export interface EarnInput {

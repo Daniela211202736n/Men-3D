@@ -1,0 +1,36 @@
+# Infraestructura local de desarrollo: la base de datos.
+#
+#   docker compose up -d     antes de `npm run dev`
+#
+# El almacenamiento de objetos no esta aca a proposito: en desarrollo los
+# modelos 3D se sirven desde la API (STORAGE_DRIVER=local), que no necesita
+# infraestructura. En produccion se usa S3, Cloudflare R2 o DigitalOcean Spaces
+# cambiando solo variables de entorno — ver docs/DEPLOY.md.
+#
+# Para levantar tambien la API y la PWA en contenedores:
+#   docker compose -f docker-compose.yml -f docker-compose.apps.yml up -d
+
+name: men3d
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: men3d
+      POSTGRES_PASSWORD: men3d_dev
+      POSTGRES_DB: men3d
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # `npm run setup` depende de que la base acepte conexiones, no de que el
+      # contenedor exista: sin esto las migraciones corren contra nada.
+      test: ['CMD-SHELL', 'pg_isready -U men3d -d men3d']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:

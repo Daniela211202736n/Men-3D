@@ -13,6 +13,8 @@ import { OrderStatus } from '@men3d/shared';
 
 import { prisma } from '../src/prisma.js';
 import { applyPaymentUpdate, computeEarnedPoints } from '../src/modules/orders/service.js';
+import { deleteTenantsBySlug } from '../src/modules/tenants/service.js';
+import { getOrCreateAccount } from '../src/modules/loyalty/service.js';
 
 const SLUG = `test-pagos-${Date.now()}`;
 const GUEST = 'guest-de-prueba-0001';
@@ -79,7 +81,7 @@ before(async () => {
 });
 
 after(async () => {
-  await prisma.tenant.deleteMany({ where: { slug: SLUG } });
+  await deleteTenantsBySlug([SLUG]);
   await prisma.$disconnect();
 });
 
@@ -146,6 +148,26 @@ describe('notificacion de pago aprobado', () => {
       })
     ).balance;
     assert.equal(saldoFinal, saldoTrasPrimera);
+  });
+});
+
+describe('cuenta de puntos bajo concurrencia', () => {
+  it('peticiones simultaneas del mismo comensal nuevo no chocan', async () => {
+    // Postgres deja correr estas escrituras en paralelo de verdad; al abrir la
+    // carta, el saldo y el carrito se piden casi al mismo tiempo.
+    const nuevo = `guest-carrera-${Date.now()}`;
+    const resultados = await Promise.all(
+      Array.from({ length: 8 }, () => getOrCreateAccount(tenantId, nuevo)),
+    );
+
+    // Todas devuelven la misma cuenta, y hay exactamente una en la base.
+    const ids = new Set(resultados.map((r) => r.id));
+    assert.equal(ids.size, 1, 'todas las peticiones ven la misma cuenta');
+
+    const cuentas = await prisma.loyaltyAccount.count({
+      where: { tenantId, guestId: nuevo },
+    });
+    assert.equal(cuentas, 1, 'no se creo una cuenta duplicada');
   });
 });
 

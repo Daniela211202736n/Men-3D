@@ -452,12 +452,64 @@ export async function downloadQrPdf(
   URL.revokeObjectURL(href);
 }
 
-/** Sube un modelo 3D o una imagen y devuelve su URL servible. */
+interface UploadTicket {
+  kind: 'direct' | 'presigned';
+  uploadUrl: string;
+  headers: Record<string, string>;
+  key: string;
+  publicUrl: string;
+  maxBytes: number;
+}
+
+/**
+ * Sube un modelo 3D o una imagen y devuelve su URL servible.
+ *
+ * Primero pide un permiso de subida y despues manda el archivo a donde ese
+ * permiso indique: a la API (driver `local`) o directo al bucket con una URL
+ * firmada (driver `s3`). El frontend no sabe —ni necesita saber— cual de los
+ * dos esta configurado; con `s3` el archivo nunca pasa por el servidor.
+ */
 export async function uploadAsset(file: File): Promise<{ url: string; bytes: number }> {
   const token = getToken();
+
+  const ticket = await request<UploadTicket>('/api/admin/assets/upload-ticket', {
+    method: 'POST',
+    body: { contentType: file.type },
+    auth: true,
+  });
+
+  if (file.size > ticket.maxBytes) {
+    throw new ApiError(
+      413,
+      'FILE_TOO_LARGE',
+      `El archivo pesa ${(file.size / 1024 / 1024).toFixed(1)} MB y el maximo es ` +
+        `${Math.round(ticket.maxBytes / 1024 / 1024)} MB.`,
+    );
+  }
+
+  if (ticket.kind === 'presigned') {
+    // PUT directo al bucket. Las cabeceras vienen en el permiso porque la firma
+    // las cubre: mandar otras hace que el bucket rechace la subida.
+    const put = await fetch(ticket.uploadUrl, {
+      method: 'PUT',
+      headers: ticket.headers,
+      body: file,
+    });
+    if (!put.ok) {
+      throw new ApiError(
+        put.status,
+        'UPLOAD_FAILED',
+        'No se pudo subir el archivo al almacenamiento. Reintenta en un momento.',
+      );
+    }
+    return { url: ticket.publicUrl, bytes: file.size };
+  }
+
+  // Camino `direct`: la API recibe el archivo, verifica su firma binaria y lo
+  // guarda.
   const form = new FormData();
   form.append('file', file);
-  const response = await fetch(buildUrl('/upload'), {
+  const response = await fetch(buildUrl(ticket.uploadUrl), {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: form,
@@ -467,7 +519,11 @@ export async function uploadAsset(file: File): Promise<{ url: string; bytes: num
     | ApiErrorDto;
   if (!response.ok) {
     const err = (payload as ApiErrorDto).error;
-    throw new ApiError(response.status, err?.code ?? 'UPLOAD_FAILED', err?.message ?? 'Fallo la subida');
+    throw new ApiError(
+      response.status,
+      err?.code ?? 'UPLOAD_FAILED',
+      err?.message ?? 'Fallo la subida',
+    );
   }
   return payload as { url: string; bytes: number };
 }
