@@ -131,6 +131,19 @@ ADMIN toque a un OWNER. El alta solo crea `ADMIN` o `STAFF`; el único camino a
 OWNER es `transfer-ownership`, que intercambia los dos roles en una transacción
 —nunca quedan dos dueños ni ninguno.
 
+### Abono del restaurante
+
+```
+GET    /subscription      estado, proximo cobro, dias de gracia
+POST   /subscription      inicia el debito mensual → { initPoint }   solo OWNER
+DELETE /subscription      da de baja el abono                        solo OWNER
+```
+
+El plan se activa con el aviso de la pasarela, nunca con la vuelta del
+navegador. Si no se cobra: 7 días de gracia en los que no cambia nada, y
+después el local vuelve al plan gratuito —la carta y el visor 3D del comensal
+siguen en pie. Ver [PAYMENTS.md](PAYMENTS.md).
+
 ### Local, marca y plan
 
 ```
@@ -181,6 +194,15 @@ GET  /api/payments/webhook/:provider/health   estado de configuración
 Rutas públicas: las autentica la firma de la notificación, no un token. El
 código de respuesta decide si la pasarela reintenta — ver
 [PAYMENTS.md](PAYMENTS.md).
+
+## Webhook del abono
+
+```
+POST /api/billing/webhook/mercadopago/subscription
+```
+
+Firmado igual que el de pedidos. Sin `MERCADOPAGO_WEBHOOK_SECRET` responde 401
+en vez de aplicar a ciegas.
 
 ## Archivos
 

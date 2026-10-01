@@ -132,14 +132,56 @@ model Subscription {
   planId   String
   plan     Plan   @relation(fields: [planId], references: [id])
 
-  /// TRIALING | ACTIVE | PAST_DUE | CANCELED
+  /// TRIALING | ACTIVE | PAST_DUE | SUSPENDED | CANCELED
+  ///
+  /// PAST_DUE es "fallo un cobro pero sigue andando todo": hay gracia por
+  /// delante. SUSPENDED es "se acabo la gracia": el restaurante vuelve al plan
+  /// gratuito sin perder nada de lo cargado.
   status        String    @default("TRIALING")
   trialEndsAt   DateTime?
   currentPeriodEnd DateTime?
+  /// Hasta cuando sigue andando todo despues de un cobro fallido.
+  graceEndsAt   DateTime?
   /// Si el setup inicial ya fue cobrado.
   setupFeePaid  Boolean   @default(false)
+
+  /// MANUAL | MERCADOPAGO. MANUAL es el alta a mano, que sigue sirviendo para
+  /// los primeros clientes y para el periodo de prueba.
+  provider      String    @default("MANUAL")
+  /// Id de la suscripcion en la pasarela (`preapproval` de MercadoPago).
+  providerRef   String?   @unique
+  lastPaymentAt DateTime?
+  canceledAt    DateTime?
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  events BillingEvent[]
+}
+
+/// Aviso de la pasarela sobre una suscripcion, guardado para no procesarlo dos
+/// veces y para poder reconstruir que paso.
+///
+/// MercadoPago reintenta los avisos y no garantiza orden ni unicidad: sin esta
+/// tabla, un reintento del aviso de cobro podria extender el periodo dos veces.
+model BillingEvent {
+  id             String @id @default(cuid())
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  provider String
+  /// Id del aviso en la pasarela. Es lo que vuelve idempotente el webhook.
+  eventId  String
+  /// preapproval | authorized_payment
+  type     String
+  /// Estado que traia el aviso, para poder auditar sin volver a la pasarela.
+  status   String?
+  payload  String
+
+  createdAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@index([subscriptionId])
 }
 
 /// Usuario del backoffice. El email es unico a nivel plataforma.

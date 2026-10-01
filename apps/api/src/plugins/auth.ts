@@ -6,14 +6,17 @@
  * carta de otro restaurante cambiando un id en la URL.
  */
 import fastifyJwt from '@fastify/jwt';
-import { Feature, PLAN_FEATURES, UserRole, type PlanTier } from '@men3d/shared';
+import { Feature, UserRole } from '@men3d/shared';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 
 import { env } from '../env.js';
 import { forbidden, unauthorized } from '../lib/errors.js';
-import { parseEnumList } from '../lib/lists.js';
 import { prisma } from '../prisma.js';
+import { getTenantFeatures } from '../modules/plans/features.js';
+
+// Se reexporta porque varios modulos lo importan desde aca desde siempre.
+export { getTenantFeatures, invalidateTenantFeatures } from '../modules/plans/features.js';
 
 export interface AuthPayload {
   sub: string;
@@ -51,43 +54,6 @@ declare module '@fastify/jwt' {
   }
 }
 
-/** Cache corto de features por tenant: el plan cambia muy de vez en cuando. */
-const featureCache = new Map<string, { features: Feature[]; expiresAt: number }>();
-const FEATURE_TTL_MS = 60_000;
-
-export async function getTenantFeatures(tenantId: string): Promise<Feature[]> {
-  const cached = featureCache.get(tenantId);
-  if (cached && cached.expiresAt > Date.now()) return cached.features;
-
-  const subscription = await prisma.subscription.findUnique({
-    where: { tenantId },
-    include: { plan: true },
-  });
-
-  let features: Feature[] = [];
-  if (subscription && subscription.status !== 'CANCELED') {
-    // La lista explicita del plan manda; si viene vacia se cae a la tabla de
-    // features por tier, para que un plan recien creado no quede sin nada.
-    const explicit = parseEnumList(
-      subscription.plan.features,
-      Object.values(Feature),
-    );
-    features = explicit.length
-      ? explicit
-      : [...(PLAN_FEATURES[subscription.plan.tier as PlanTier] ?? [])];
-  }
-
-  featureCache.set(tenantId, {
-    features,
-    expiresAt: Date.now() + FEATURE_TTL_MS,
-  });
-  return features;
-}
-
-/** Se llama al cambiar de plan para que el cambio se vea de inmediato. */
-export function invalidateTenantFeatures(tenantId: string): void {
-  featureCache.delete(tenantId);
-}
 
 export default fp(async (app) => {
   await app.register(fastifyJwt, {

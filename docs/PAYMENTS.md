@@ -161,3 +161,77 @@ Los tres métodos del contrato:
   `{ orderId, providerRef, status, amountCents }`, o `null` si el evento no
   mueve ningún pedido. Lanza si no se puede verificar.
 - `describeConfiguration()` → para la sonda; nombra lo que falta, nunca lo que hay.
+
+---
+
+# El abono del restaurante
+
+Hasta acá todo fue el cobro de **un pedido al comensal**. El abono mensual que
+paga el restaurante es otra cosa: distinto webhook, distinto ciclo de vida, y
+una decisión de producto que conviene entender antes de tocar el código.
+
+## Si no paga, vuelve al plan gratuito. No se le apaga la carta
+
+Es tentador cortar el acceso entero: es la palanca más fuerte. Pero el QR está
+pegado en las mesas. Un comensal que lo escanea un viernes a las nueve de la
+noche y encuentra una página muerta no concluye que el restaurante no nos pagó
+—concluye que **el producto no anda**, delante de sus invitados. El lunes el
+restaurante despega los QR de las mesas. Perdimos al cliente y la
+recomendación, por un mes de abono.
+
+Volver al plan gratuito mantiene en pie la carta y el visor 3D —lo que ve el
+comensal— y apaga lo que usa el restaurante: pedidos, pagos, métricas,
+traducción, marca propia. Lo siente quien decide pagar, no quien está cenando.
+Nada de lo cargado se borra: al cobrar, vuelve todo tal cual.
+
+## El camino de un cobro fallido
+
+```
+ACTIVE ──falla el cobro──▶ PAST_DUE ──vence la gracia──▶ SUSPENDED
+   ▲                           │                            │
+   └───────────── cobra ───────┴────────────────────────────┘
+```
+
+`PAST_DUE` no cambia nada para nadie: son los días de gracia. Existen porque la
+causa más común de un cobro fallido es una tarjeta vencida, no una decisión de
+irse. Son **7 días** (`DIAS_DE_GRACIA`), y se fijan una sola vez: si cada
+reintento fallido corriera el plazo, la gracia sería infinita.
+
+La suspensión se evalúa en dos lados: la tarea periódica la barre cada hora, y
+también se calcula al leer el estado. Así, el dueño que entra el día 8 ve la
+verdad aunque la tarea no haya corrido.
+
+## MercadoPago: `preapproval`
+
+```
+POST   /api/admin/subscription     crea el preapproval → devuelve init_point
+GET    /api/admin/subscription     estado, próximo cobro, días de gracia
+DELETE /api/admin/subscription     baja (también en la pasarela)
+
+POST /api/billing/webhook/mercadopago/subscription
+```
+
+El dueño autoriza el débito en `init_point`. **El plan se activa con el aviso
+de la pasarela, nunca con la vuelta del navegador**: que el dueño vuelva a la
+página no prueba que haya autorizado nada, y la URL de vuelta la puede escribir
+cualquiera. Es la misma regla que en el cobro de pedidos.
+
+`pending` no es activo: es "creada, todavía no autorizó". Tratarla como activa
+regalaría el plan a quien abre el checkout y lo cierra.
+
+Los avisos se guardan en `BillingEvent` antes de aplicarse. MercadoPago
+reintenta y no garantiza orden ni unicidad: sin eso, el reintento del aviso de
+un cobro correría el período dos veces y el restaurante tendría un mes gratis.
+
+La firma se verifica con el mismo código que el webhook de pedidos. Sin
+`MERCADOPAGO_WEBHOOK_SECRET` el webhook responde 401 en vez de aplicar a
+ciegas: un aviso de "cobró" sin verificar es un plan regalado a quien sepa la
+URL.
+
+## Lo que falta probar
+
+El diálogo con MercadoPago necesita una cuenta real. Lo verificado es la
+máquina de estados, la degradación, la idempotencia y el rechazo de avisos sin
+firma —todo con pruebas— más los cuatro estados en el navegador. **La creación
+del `preapproval` y los avisos de cobro reales no están probados contra la
+pasarela.**

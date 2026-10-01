@@ -13,6 +13,7 @@ import { serializeList } from '../../lib/lists.js';
 import { toBrandingDto, toVenueDto } from '../../lib/serialize.js';
 import { prisma } from '../../prisma.js';
 import { getTenantFeatures, invalidateTenantFeatures } from '../../plugins/auth.js';
+import { featuresVigentes, graciaVencida } from '../billing/service.js';
 import { loadVenueRating } from '../menu/service.js';
 
 export default async function adminSettingsRoutes(
@@ -91,15 +92,30 @@ export default async function adminSettingsRoutes(
     ]);
 
     const tier = (subscription?.plan.tier as PlanTier) ?? 'FREE';
+
+    // El estado sale de la fila que acabamos de leer, pero `features` viene de
+    // un cache de 60 segundos. Si solo se devolvieran asi, la pantalla podria
+    // decir "suspendido" arriba y listar las funciones del plan pago abajo
+    // —contradiciendose sola— durante esa ventana, y tambien entre instancias
+    // de la API, que tienen cada una su cache. Se aplica la degradacion sobre
+    // el estado recien leido para que la respuesta sea coherente consigo misma.
+    const estado = subscription?.status ?? 'CANCELED';
+    const estadoReal = graciaVencida(estado, subscription?.graceEndsAt ?? null)
+      ? 'SUSPENDED'
+      : estado;
+    const featuresDelPlan = features.length
+      ? features
+      : [...(PLAN_FEATURES[tier] ?? [])];
+
     return {
       tier,
-      status: subscription?.status ?? 'CANCELED',
+      status: estadoReal,
       trialEndsAt: subscription?.trialEndsAt?.toISOString() ?? null,
       currentPeriodEnd: subscription?.currentPeriodEnd?.toISOString() ?? null,
       monthlyCents: subscription?.plan.monthlyCents ?? 0,
       setupFeeCents: subscription?.plan.setupFeeCents ?? 0,
       setupFeePaid: subscription?.setupFeePaid ?? false,
-      features: features.length ? features : [...(PLAN_FEATURES[tier] ?? [])],
+      features: featuresVigentes(estadoReal, featuresDelPlan),
       usage: {
         dishes: dishCount,
         maxDishes: subscription?.plan.maxDishes ?? 0,

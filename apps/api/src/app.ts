@@ -27,6 +27,8 @@ import assetRoutes from './modules/assets/routes.js';
 import authRoutes from './modules/auth/routes.js';
 import kdsStreamRoutes from './modules/orders/kds.routes.js';
 import paymentWebhookRoutes from './modules/payments/routes.js';
+import billingRoutes, { billingWebhookRoutes } from './modules/billing/routes.js';
+import { iniciarTareas } from './modules/billing/tareas.js';
 import publicRoutes from './modules/menu/routes.js';
 import { prisma } from './prisma.js';
 
@@ -100,6 +102,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       await instance.register(adminOperationsRoutes);
       await instance.register(adminInsightsRoutes);
       await instance.register(adminTeamRoutes);
+      await instance.register(billingRoutes);
     },
     { prefix: '/api/admin' },
   );
@@ -107,6 +110,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   // --- webhooks de las pasarelas de pago ------------------------------------
   // Publico a proposito: lo autentica la firma de la notificacion, no un token.
   await app.register(paymentWebhookRoutes, { prefix: '/api/payments' });
+  // El cobro del abono al restaurante, que no es lo mismo que el cobro de un
+  // pedido al comensal: distinto webhook, distinto ciclo de vida.
+  await app.register(billingWebhookRoutes, { prefix: '/api/billing' });
 
   // --- stream del KDS ------------------------------------------------------
   // Fuera del grupo anterior: se autentica con su propio ticket de 60 s.
@@ -114,6 +120,10 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // --- assets --------------------------------------------------------------
   await app.register(assetRoutes);
+
+
+  // Suspension por impago y limpieza de tokens vencidos.
+  iniciarTareas(app);
 
   return app;
 }

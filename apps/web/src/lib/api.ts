@@ -278,6 +278,32 @@ export const adminApi = {
       auth: true,
     }),
 
+  // --- abono mensual -------------------------------------------------------
+  subscription: (signal?: AbortSignal) =>
+    request<{
+      status: string;
+      provider: string;
+      tier?: string;
+      monthlyCents?: number;
+      currentPeriodEnd: string | null;
+      graceEndsAt: string | null;
+      lastPaymentAt: string | null;
+      diasDeGracia?: number;
+      pasarelaLista?: boolean;
+    }>('/api/admin/subscription', { auth: true, signal }),
+
+  startSubscription: () =>
+    request<{ initPoint: string; providerRef: string }>('/api/admin/subscription', {
+      method: 'POST',
+      auth: true,
+    }),
+
+  cancelSubscription: () =>
+    request<{ status: string; mensaje: string }>('/api/admin/subscription', {
+      method: 'DELETE',
+      auth: true,
+    }),
+
   // --- equipo --------------------------------------------------------------
   team: (signal?: AbortSignal) =>
     request<TeamUserDto[]>('/api/admin/users', { auth: true, signal }),

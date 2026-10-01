@@ -37,8 +37,11 @@ Ordenado por lo que bloquea cobrar el primer peso.
 - **Cumplimiento**: aviso de cookies/analítica, exportación y borrado de datos del
   comensal (hoy son identificadores opacos en su navegador, lo que ayuda, pero el
   aviso hace falta igual).
-- **Facturación de la suscripción**: hoy el plan se cambia a mano. Falta el cobro
-  recurrente del abono mensual y el corte por impago.
+- **Facturación de la suscripción: hecha.** Débito mensual con MercadoPago
+  (`preapproval`), período de gracia de 7 días y degradación al plan gratuito
+  por impago —la carta del comensal nunca se apaga, ver PAYMENTS.md. Falta
+  probarla contra una cuenta real, y el cobro del *setup fee* inicial, que hoy
+  se sigue marcando a mano.
 
 ## 3. Lo que sigue al producto
 
