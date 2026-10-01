@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Generar los modelos 3D de ejemplo
+        run: npm run models:sample
+
+      - name: Compilar el paquete compartido
+        # La API y la PWA tipan contra sus declaraciones: tiene que ir primero.
+        run: npm run build -w @men3d/shared
+
+      - name: Preparar la base de datos
+        run: npm run db:push -w @men3d/api
+        env:
+          DATABASE_URL: file:./prisma/ci.db
+
+      - name: Chequeo de tipos
+        run: npm run typecheck
+
+      - name: Pruebas
+        run: npm test
+        env:
+          DATABASE_URL: file:./prisma/ci.db
+
+      - name: Compilación de producción
+        run: npm run build
+
+      - name: Auditoría de dependencias
+        run: npm audit --audit-level=high

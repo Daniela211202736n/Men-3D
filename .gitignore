@@ -1,0 +1,30 @@
+node_modules/
+dist/
+build/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+
+# prisma / sqlite
+*.db
+*.db-journal
+apps/api/prisma/dev.db*
+
+# generated assets
+apps/web/public/models/*.glb
+apps/web/dev-dist/
+apps/api/storage/
+
+# logs / os
+*.log
+npm-debug.log*
+.DS_Store
+
+# declaraciones generadas por el chequeo de tipos
+apps/web/*.d.ts
+apps/web/src/**/*.d.ts

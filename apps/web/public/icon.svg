@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Men-3D">
+  <rect width="64" height="64" rx="14" fill="#2a78d6"/>
+  <!-- plato visto en perspectiva -->
+  <ellipse cx="32" cy="42" rx="20" ry="7.5" fill="#fcfcfb" opacity="0.95"/>
+  <ellipse cx="32" cy="41" rx="13" ry="4.6" fill="#2a78d6" opacity="0.25"/>
+  <!-- cubo 3D sobre el plato -->
+  <path d="M32 14l11 6v12l-11 6-11-6V20z" fill="#eb6834"/>
+  <path d="M32 14l11 6-11 6-11-6z" fill="#f08c5f"/>
+  <path d="M32 26v12l11-6V20z" fill="#c9521f"/>
+</svg>
