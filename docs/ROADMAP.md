@@ -14,9 +14,10 @@ Ordenado por lo que bloquea cobrar el primer peso.
 
 ## 2. Necesario antes de abrir a clientes
 
-- **Pruebas automatizadas.** Hay 28 pruebas de dominio (`npm test`) sobre las
-  reglas que cobran mal si se rompen: totales e IVA, canje de puntos, máquina de
-  estados del pedido, listas portables y clasificación del recomendador. Faltan
+- **Pruebas automatizadas.** Hay 64 pruebas (`npm test`) sobre las reglas que
+  cobran mal si se rompen: totales e IVA, canje de puntos, máquina de estados del
+  pedido, listas portables, clasificación del recomendador y todo el adaptador de
+  MercadoPago (firma, conversión de importes, mapeo de estados). Faltan
   las de aislamiento entre tenants contra una base real y un *end-to-end* del
   flujo escanear → ver en 3D → pedir; la verificación de ese flujo hoy es un
   recorrido de navegador manual. El camino del dinero sí tiene pruebas de
