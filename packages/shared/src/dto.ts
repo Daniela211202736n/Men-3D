@@ -199,6 +199,19 @@ export interface AuthUserDto {
   tenantSlug: string;
 }
 
+/** Integrante del equipo del restaurante, como lo ve el backoffice. */
+export interface TeamUserDto {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+  /** `true` si es la cuenta con la que se esta navegando. */
+  isSelf: boolean;
+}
+
 export interface AuthResponseDto {
   token: string;
   user: AuthUserDto;

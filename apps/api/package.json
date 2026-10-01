@@ -12,7 +12,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "test": "node --test --import tsx test/*.test.ts",
+    "test": "AUTH_RATE_LIMIT_MAX=1000 node --test --import tsx test/*.test.ts",
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "db:reset": "prisma migrate reset --force"

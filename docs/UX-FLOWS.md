@@ -139,3 +139,53 @@ nunca podría contar.
 
 Cada gráfico tiene un botón "Ver tabla" con los mismos datos en texto, tanto para
 lectores de pantalla como para quien quiere el número exacto.
+
+---
+
+## E. Sumar al equipo y recuperar el acceso
+
+Dos flujos que no se ven en una demostración pero deciden si un restaurante
+puede operar solo, sin que alguien lo acompañe de la mano.
+
+### Sumar a alguien
+
+El dueño entra a **Equipo**, toca "+ Sumar a alguien", y carga nombre, email,
+una contraseña inicial y el rol: **Administrador** (carta, precios, marca,
+métricas y equipo) o **Cocina** (solo el KDS). La contraseña inicial se la pasa
+él en persona; el otro la cambia después desde su propia cuenta.
+
+Cada ficha muestra el último acceso, que responde la pregunta que de verdad se
+hacen: *¿este sigue entrando?*
+
+**Lo que la pantalla no ofrece** importa tanto como lo que ofrece. Nadie se ve
+un botón para cambiarse el rol a sí mismo, ni para darse de baja, ni para
+degradar al único dueño: son reglas que el servidor rechaza igual, y un botón
+cuyo único efecto posible es un mensaje de error es una promesa rota. Un
+administrador tampoco ve acciones sobre el dueño.
+
+Traspasar la titularidad es la única forma de que haya un dueño nuevo, pide
+confirmación, y es un intercambio: el dueño pasa a administrador en la misma
+operación. Nunca hay dos dueños ni ninguno.
+
+Un usuario de cocina no ve "Equipo" en el menú. La diferencia con una función
+bloqueada por plan es deliberada: lo que falta por plan se muestra con candado
+—está a un pago de distancia, mostrarlo es la oferta— pero un mozo no puede
+comprarse el permiso. Si llega a la URL igual, la pantalla le explica de quién
+depende el cambio en vez de mostrarle un error.
+
+### Recuperar el acceso
+
+En el login hay un enlace "Olvidé mi contraseña". Se pide con el email y la
+respuesta es **siempre la misma**, exista o no la cuenta: "si existe una cuenta
+con ese correo, va a recibir un enlace". Decir "ese email no está registrado"
+sería cómodo para quien se equivocó de cuenta, y una lista de clientes para
+cualquiera con tiempo.
+
+El enlace vence en una hora y sirve una sola vez. Un enlace vencido, uno ya
+usado y uno inventado dan exactamente el mismo mensaje, por lo mismo: probar
+enlaces al azar no tiene que enseñar nada. Al fijar la contraseña nueva, el
+sistema devuelve al login en vez de abrir la sesión solo —entrar con la
+contraseña recién elegida es lo que confirma que quedó bien.
+
+En desarrollo no hace falta un servidor de correo: con `MAIL_DRIVER=log` el
+correo entero sale por la consola de la API, con el enlace listo para pegar.

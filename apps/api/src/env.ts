@@ -41,6 +41,25 @@ const schema = z.object({
   PUBLIC_API_URL: z.string().url().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_MODEL: z.string().default('claude-opus-5-5'),
+  // --- correo --------------------------------------------------------------
+  /**
+   * `log` imprime el correo en la consola (desarrollo: el enlace de
+   * recuperacion sale en el log). `resend` envia de verdad.
+   */
+  /**
+   * Intentos de autenticacion por IP cada 5 minutos.
+   *
+   * El valor por defecto frena la fuerza bruta sin molestar a nadie, pero un
+   * local donde todo el equipo entra desde el mismo wifi sale por una sola IP:
+   * si son muchos, conviene subirlo. Tambien lo suben las pruebas, que recorren
+   * el flujo entero de autenticacion muchas veces seguidas.
+   */
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
+  MAIL_DRIVER: z.enum(['log', 'resend']).default('log'),
+  /** Remitente verificado, p. ej. "Men-3D <hola@tu-dominio.com>". */
+  MAIL_FROM: z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
+
   // --- almacenamiento de modelos 3D e imagenes -----------------------------
   /**
    * `local` guarda en disco y sirve desde la API: alcanza para desarrollo.
@@ -133,6 +152,25 @@ if (env.STORAGE_DRIVER === 's3') {
       `STORAGE_DRIVER=s3 requiere: ${faltantes.join(', ')}. Ver docs/DEPLOY.md.`,
     );
   }
+}
+
+if (env.MAIL_DRIVER === 'resend') {
+  const faltantes: string[] = [];
+  if (!env.RESEND_API_KEY) faltantes.push('RESEND_API_KEY');
+  if (!env.MAIL_FROM) faltantes.push('MAIL_FROM');
+  if (faltantes.length > 0) {
+    throw new Error(
+      `MAIL_DRIVER=resend requiere: ${faltantes.join(', ')}. Ver docs/DEPLOY.md.`,
+    );
+  }
+}
+
+if (isProduction && env.MAIL_DRIVER === 'log') {
+  // Nadie recupera su contraseña si el correo solo se imprime en un log.
+  console.warn(
+    '[mail] MAIL_DRIVER=log en produccion: NINGUN correo se envia de verdad, ' +
+      'incluido el de recuperacion de contraseña. Ver docs/DEPLOY.md.',
+  );
 }
 
 if (isProduction && env.STORAGE_DRIVER === 'local') {

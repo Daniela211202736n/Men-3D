@@ -19,6 +19,7 @@ import type {
   PairingDto,
   PlanTier,
   ReviewDto,
+  TeamUserDto,
   VenueDto,
 } from '@men3d/shared';
 
@@ -256,6 +257,56 @@ export const adminApi = {
     email: string;
     password: string;
   }) => request<AuthResponseDto>('/api/auth/register', { method: 'POST', body }),
+
+  // --- contraseña ----------------------------------------------------------
+  forgotPassword: (email: string) =>
+    request<{ message: string }>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: { email },
+    }),
+
+  resetPassword: (token: string, password: string) =>
+    request<{ message: string }>('/api/auth/reset-password', {
+      method: 'POST',
+      body: { token, password },
+    }),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ message: string }>('/api/auth/change-password', {
+      method: 'POST',
+      body: { currentPassword, newPassword },
+      auth: true,
+    }),
+
+  // --- equipo --------------------------------------------------------------
+  team: (signal?: AbortSignal) =>
+    request<TeamUserDto[]>('/api/admin/users', { auth: true, signal }),
+
+  createTeamUser: (body: {
+    email: string;
+    name: string;
+    password: string;
+    role: 'ADMIN' | 'STAFF';
+  }) => request<TeamUserDto>('/api/admin/users', { method: 'POST', body, auth: true }),
+
+  updateTeamUser: (
+    id: string,
+    body: { name?: string; role?: 'ADMIN' | 'STAFF'; isActive?: boolean },
+  ) =>
+    request<TeamUserDto>(`/api/admin/users/${id}`, {
+      method: 'PATCH',
+      body,
+      auth: true,
+    }),
+
+  deactivateTeamUser: (id: string) =>
+    request<TeamUserDto>(`/api/admin/users/${id}`, { method: 'DELETE', auth: true }),
+
+  transferOwnership: (id: string) =>
+    request<TeamUserDto>(`/api/admin/users/${id}/transfer-ownership`, {
+      method: 'POST',
+      auth: true,
+    }),
 
   me: (signal?: AbortSignal) =>
     request<{ user: AuthResponseDto['user']; plan: AuthResponseDto['plan'] }>(

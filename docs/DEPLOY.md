@@ -86,6 +86,38 @@ Con `STORAGE_DRIVER=local` en producción la API avisa por consola: los modelos
 se sirven desde Node (lento en 4G) y viven en el disco del contenedor, así que
 se pierden al recrearlo.
 
+### Límites
+
+| Variable | Valor |
+| --- | --- |
+| `AUTH_RATE_LIMIT_MAX` | Intentos de autenticación por IP cada 5 minutos (por defecto 20) |
+
+Cubre login, registro y recuperación de contraseña. El valor por defecto frena
+la fuerza bruta sin molestar a nadie, con una salvedad: el límite es **por IP**,
+y todo el equipo de un local sale por el mismo wifi. En un restaurante con
+mucho personal que entra al mismo tiempo —un cambio de turno— conviene subirlo.
+
+### Correo transaccional
+
+| Variable | Valor |
+| --- | --- |
+| `MAIL_DRIVER` | `resend` en producción; `log` solo en desarrollo |
+| `MAIL_FROM` | Remitente, en un dominio verificado en Resend |
+| `RESEND_API_KEY` | Clave de la API de Resend |
+
+Con `MAIL_DRIVER=log` la API no envía nada: imprime el correo entero en la
+consola. En desarrollo eso es lo cómodo —el enlace de recuperación sale listo
+para copiar— pero en producción significa que **nadie puede recuperar su
+contraseña**, así que cada correo no enviado queda registrado con una
+advertencia explícita en el log.
+
+La API no arranca con `MAIL_DRIVER=resend` si falta `RESEND_API_KEY` o
+`MAIL_FROM`: es mejor que falle al desplegar que al primer cliente que se
+olvide la clave.
+
+El enlace del correo se construye sobre `PUBLIC_WEB_URL`, así que si esa
+variable está mal, los enlaces llegan apuntando a ninguna parte.
+
 ### Pagos
 
 Ver [PAYMENTS.md](PAYMENTS.md).

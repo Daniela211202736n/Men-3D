@@ -22,6 +22,7 @@ import adminCatalogRoutes from './modules/admin/catalog.routes.js';
 import adminInsightsRoutes from './modules/admin/insights.routes.js';
 import adminOperationsRoutes from './modules/admin/operations.routes.js';
 import adminSettingsRoutes from './modules/admin/settings.routes.js';
+import adminTeamRoutes from './modules/admin/team.routes.js';
 import assetRoutes from './modules/assets/routes.js';
 import authRoutes from './modules/auth/routes.js';
 import kdsStreamRoutes from './modules/orders/kds.routes.js';
@@ -72,8 +73,14 @@ export async function buildApp(): Promise<FastifyInstance> {
   // --- autenticacion -------------------------------------------------------
   await app.register(
     async (instance) => {
-      // Limite estricto en login/registro: es la puerta que se ataca por fuerza bruta.
-      await instance.register(rateLimit, { max: 20, timeWindow: '5 minutes' });
+      // Limite estricto para todo el grupo: es la puerta que se ataca por fuerza
+      // bruta. Cubre el login, el registro, y tambien la recuperacion de
+      // contraseña —donde el riesgo no es adivinar el token (son 256 bits) sino
+      // usar el formulario para inundar de correo a una direccion ajena.
+      await instance.register(rateLimit, {
+        max: env.AUTH_RATE_LIMIT_MAX,
+        timeWindow: '5 minutes',
+      });
       await instance.register(authRoutes);
     },
     { prefix: '/api/auth' },
@@ -92,6 +99,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       await instance.register(adminSettingsRoutes);
       await instance.register(adminOperationsRoutes);
       await instance.register(adminInsightsRoutes);
+      await instance.register(adminTeamRoutes);
     },
     { prefix: '/api/admin' },
   );

@@ -14,6 +14,7 @@ import {
 import type { FastifyInstance } from 'fastify';
 
 import { conflict, notFound } from '../../lib/errors.js';
+import { verificarLimiteDeModelos, verificarLimiteDePlatos } from './plan-limits.js';
 import { toCategoryDto, toDishDto } from '../../lib/serialize.js';
 import { prisma } from '../../prisma.js';
 import { dishInclude } from '../menu/service.js';
@@ -148,6 +149,11 @@ export default async function adminCatalogRoutes(
     });
     if (!category) throw notFound('Categoria');
 
+    // Antes de crear, no despues: un 403 con el motivo es mejor que crear y
+    // revertir.
+    await verificarLimiteDePlatos(tenantId);
+    if (input.modelGlbUrl) await verificarLimiteDeModelos(tenantId);
+
     const last = await prisma.dish.findFirst({
       where: { tenantId },
       orderBy: { position: 'desc' },
@@ -209,6 +215,9 @@ export default async function adminCatalogRoutes(
       });
       if (!category) throw notFound('Categoria');
     }
+
+    // Poner un modelo donde no habia suma uno a la cuenta; reemplazarlo, no.
+    if (input.modelGlbUrl) await verificarLimiteDeModelos(tenantId, id);
 
     const { allergens, dietTags, ingredients, ...scalars } = input;
 
@@ -315,6 +324,8 @@ export default async function adminCatalogRoutes(
   app.post('/dishes/:id/restore', async (request) => {
     const { tenantId } = request.authUser!;
     const { id } = request.params as { id: string };
+    // Restaurar vuelve a ocupar un lugar en el plan.
+    await verificarLimiteDePlatos(tenantId);
     const result = await prisma.dish.updateMany({
       where: { id, tenantId },
       data: { archivedAt: null },

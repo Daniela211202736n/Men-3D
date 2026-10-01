@@ -156,7 +156,28 @@ model User {
   lastLoginAt  DateTime?
   createdAt    DateTime @default(now())
 
+  passwordResetTokens PasswordResetToken[]
+
   @@index([tenantId])
+}
+
+/// Token de recuperacion de contraseña.
+///
+/// Se guarda el **hash** del token, nunca el token en claro: con acceso de
+/// lectura a la base, un atacante no puede fabricar el enlace de nadie.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// SHA-256 del token que viaja en el enlace.
+  tokenHash String   @unique
+  expiresAt DateTime
+  /// Momento en que se uso; un token solo sirve una vez.
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // ------------------------------------------------------------------- CARTA

@@ -4,11 +4,16 @@
  * Los items que el plan no incluye no se esconden, se muestran deshabilitados y
  * con el motivo: un dueño tiene que poder ver que existe la funcion y que la
  * tiene a un plan de distancia.
+ *
+ * Los que el rol no permite si se esconden, y la diferencia no es cosmetica: una
+ * funcion bloqueada por plan esta a un pago de distancia —mostrarla es la oferta—
+ * pero un mozo no puede comprarse el permiso de administrar el equipo. Mostrarsela
+ * con candado solo le anuncia que existe una pantalla que no va a poder abrir.
  */
 import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 
-import type { Feature } from '@men3d/shared';
+import type { Feature, UserRole } from '@men3d/shared';
 
 import { Spinner } from '../../components/ui.js';
 import { applyTheme, readTheme } from '../../lib/branding.js';
@@ -20,6 +25,8 @@ interface NavItem {
   label: string;
   end?: boolean;
   feature?: Feature;
+  /** Si esta, solo estos roles ven el item. Sin esto, lo ven todos. */
+  roles?: UserRole[];
 }
 
 const NAV: NavItem[] = [
@@ -30,6 +37,7 @@ const NAV: NavItem[] = [
   { to: '/admin/qr', label: 'QR y compartir' },
   { to: '/admin/marca', label: 'Marca', feature: 'CUSTOM_BRANDING' },
   { to: '/admin/local', label: 'Datos del local' },
+  { to: '/admin/equipo', label: 'Equipo', roles: ['OWNER', 'ADMIN'] },
   { to: '/admin/plan', label: 'Plan y uso' },
 ];
 
@@ -52,7 +60,7 @@ export function AdminLayout(): ReactNode {
           </span>
         </div>
 
-        {NAV.map((item) => {
+        {NAV.filter((item) => !item.roles || item.roles.includes(user.role)).map((item) => {
           const locked = item.feature ? !can(item.feature) : false;
           return locked ? (
             <span

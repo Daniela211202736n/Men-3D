@@ -68,7 +68,11 @@ docker-compose.apps.yml up -d --build` levanta todo en contenedores en
 - **Compartir** por WhatsApp o mail.
 - **Marca**: colores, logo, portada y fondo, con contraste calculado.
 - **Traducción automática** de la carta.
-- **Plan y uso**, con las funciones que cada plan habilita.
+- **Plan y uso**, con las funciones que cada plan habilita y los límites
+  aplicados al cargar (no solo mostrados).
+- **Equipo**: altas de encargados y mozos con su rol, baja lógica y traspaso de
+  la propiedad del local.
+- **Recuperación de contraseña** por correo, con enlace de un solo uso.
 
 ---
 

@@ -10,19 +10,20 @@ Ordenado por lo que bloquea cobrar el primer peso.
 | **PostgreSQL** | **Hecho.** Migraciones versionadas, búsqueda insensible a mayúsculas, baja de restaurantes en orden de dependencias | Búsqueda difusa y sin tildes (`unaccent` + `pg_trgm` con índice GIN). |
 | **Modelos en CDN** | **Hecho.** Driver `s3` con subida firmada directa al bucket; `local` sigue para desarrollo | Probarlo contra un bucket real: lo verificado es el cableado contra un doble, no una integración con AWS/R2. |
 | **Imágenes y despliegue** | **Hecho.** Dockerfiles de API y PWA, compose completo, migraciones como paso aparte, CI que compila las imágenes | Elegir plataforma y publicar las imágenes en un registro. |
-| **Correo transaccional** | No existe | Confirmación de pedido y recuperación de contraseña. |
+| **Correo transaccional** | **Recuperación de contraseña hecha** (driver `log` para desarrollo, Resend para producción) | Confirmación de pedido al comensal. Probar Resend con un dominio verificado. |
 
 ## 2. Necesario antes de abrir a clientes
 
-- **Pruebas automatizadas.** Hay 79 pruebas (`npm test`): totales e IVA, canje de
+- **Pruebas automatizadas.** Hay 135 pruebas (`npm test`): totales e IVA, canje de
   puntos, máquina de estados del pedido, el adaptador de MercadoPago completo,
-  el almacenamiento local y S3, y las de integración del camino del dinero
-  (liquidación, idempotencia, importe manipulado, concurrencia). **Falta la que
-  más importa: el aislamiento entre tenants contra la base real.** Hoy esa
-  propiedad —de la que depende todo el diseño multi-tenant— solo está verificada
-  con comprobaciones manuales. Falta también un *end-to-end* del flujo
-  escanear → ver en 3D → pedir.
-- **Recuperación de contraseña** y gestión de usuarios del equipo.
+  el almacenamiento local y S3, las de integración del camino del dinero
+  (liquidación, idempotencia, importe manipulado, concurrencia), **el aislamiento
+  entre tenants contra la base real** (33 pruebas: el token de A contra los datos
+  de B en lectura, escritura, superficie pública y tokens) y las del onboarding
+  (reglas del equipo, límites del plan, recuperación de contraseña). Esa primera
+  tanda de aislamiento encontró un agujero real: el ticket del KDS —que viaja en
+  una URL— servía como sesión completa del backoffice. Falta un *end-to-end* del
+  flujo escanear → ver en 3D → pedir.
 - **Backups** y un plan de restauración probado.
 - **KDS multi-instancia**: el bus de eventos sigue en memoria, así que la API no
   escala horizontalmente sin que una pantalla de cocina pierda pedidos.
@@ -31,8 +32,8 @@ Ordenado por lo que bloquea cobrar el primer peso.
 - **Cumplimiento**: aviso de cookies/analítica, exportación y borrado de datos del
   comensal (hoy son identificadores opacos en su navegador, lo que ayuda, pero el
   aviso hace falta igual).
-- **Límites por plan aplicados en escritura.** Hoy se muestran en "Plan y uso"
-  pero no se bloquea la carga al superarlos.
+- **Facturación de la suscripción**: hoy el plan se cambia a mano. Falta el cobro
+  recurrente del abono mensual y el corte por impago.
 
 ## 3. Lo que sigue al producto
 

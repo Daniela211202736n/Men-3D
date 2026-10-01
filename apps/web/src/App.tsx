@@ -53,6 +53,19 @@ const VenueSettingsPage = lazy(() =>
 const PlanPage = lazy(() =>
   import('./pages/admin/PlanPage.js').then((m) => ({ default: m.PlanPage })),
 );
+const TeamPage = lazy(() =>
+  import('./pages/admin/TeamPage.js').then((m) => ({ default: m.TeamPage })),
+);
+const ForgotPasswordPage = lazy(() =>
+  import('./pages/admin/PasswordPages.js').then((m) => ({
+    default: m.ForgotPasswordPage,
+  })),
+);
+const ResetPasswordPage = lazy(() =>
+  import('./pages/admin/PasswordPages.js').then((m) => ({
+    default: m.ResetPasswordPage,
+  })),
+);
 
 export function App(): ReactNode {
   return (
@@ -67,6 +80,11 @@ export function App(): ReactNode {
         <Route path="pedido" element={<CartPage />} />
         <Route path="pedido/:code" element={<OrderStatusPage />} />
       </Route>
+
+      {/* --- recuperacion de contraseña: fuera del guardia de sesion, porque
+              quien no puede entrar es justamente quien las necesita --- */}
+      <Route path="/admin/recuperar" element={<Lazy element={<ForgotPasswordPage />} />} />
+      <Route path="/admin/nueva-clave" element={<Lazy element={<ResetPasswordPage />} />} />
 
       {/* --- backoffice --- */}
       <Route
@@ -89,6 +107,7 @@ export function App(): ReactNode {
         <Route path="qr" element={<Lazy element={<QrPage />} />} />
         <Route path="local" element={<Lazy element={<VenueSettingsPage />} />} />
         <Route path="plan" element={<Lazy element={<PlanPage />} />} />
+        <Route path="equipo" element={<Lazy element={<TeamPage />} />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
