@@ -16,7 +16,6 @@ import {
 } from '@men3d/shared';
 import type { FastifyInstance } from 'fastify';
 
-import { env } from '../../env.js';
 import { badRequest, notFound } from '../../lib/errors.js';
 import { toReviewDto } from '../../lib/serialize.js';
 import { prisma } from '../../prisma.js';
@@ -190,8 +189,7 @@ export default async function publicRoutes(app: FastifyInstance): Promise<void> 
     }
 
     const input = orderCreateSchema.parse(request.body);
-    const returnUrl = new URL(`/m/${tenant.slug}/pedido`, env.PUBLIC_WEB_URL).toString();
-    const result = await createOrder(tenant, input, returnUrl);
+    const result = await createOrder(tenant, input);
     return reply.status(201).send(result);
   });
 

@@ -6,7 +6,7 @@ Ordenado por lo que bloquea cobrar el primer peso.
 
 | Tema | Estado | Qué falta |
 | --- | --- | --- |
-| **Pasarela de pagos** | Interfaz definida, proveedor simulado funcionando | Implementar Stripe o MercadoPago contra `PaymentProvider` y su webhook (verificar firma, mover el pedido a `PAID`, acreditar puntos con la clave de idempotencia que ya existe). Es un archivo nuevo, no una refactorización. |
+| **Pasarela de pagos** | **MercadoPago implementado** (Checkout Pro, webhook firmado, importe verificado, idempotente). Stripe sigue sin implementar | Probar contra una cuenta real de MercadoPago: lo verificado hasta ahora son las piezas (firma, conversión de importes, liquidación del pedido) y el recorrido del frontend con la respuesta simulada, no una transacción de punta a punta. |
 | **PostgreSQL** | Esquema portable, corriendo en SQLite | Cambiar el provider, correr migraciones, agregar `mode: 'insensitive'` en la búsqueda o un índice trigram. |
 | **Modelos en CDN** | Se sirven desde la API | Bucket + CDN, subida firmada desde el backoffice, y conservar el aviso de peso. |
 | **KDS multi-instancia** | Bus en memoria | Redis pub/sub. El resto del código solo conoce `publish` y `subscribe`. |
@@ -17,9 +17,10 @@ Ordenado por lo que bloquea cobrar el primer peso.
 - **Pruebas automatizadas.** Hay 28 pruebas de dominio (`npm test`) sobre las
   reglas que cobran mal si se rompen: totales e IVA, canje de puntos, máquina de
   estados del pedido, listas portables y clasificación del recomendador. Faltan
-  las de integración de la API contra una base real (aislamiento entre tenants,
-  checkout completo, webhooks) y un *end-to-end* del flujo escanear → ver en 3D →
-  pedir; la verificación de ese flujo hoy es un recorrido de navegador manual.
+  las de aislamiento entre tenants contra una base real y un *end-to-end* del
+  flujo escanear → ver en 3D → pedir; la verificación de ese flujo hoy es un
+  recorrido de navegador manual. El camino del dinero sí tiene pruebas de
+  integración (liquidación, idempotencia, importe manipulado).
 - **Recuperación de contraseña** y gestión de usuarios del equipo.
 - **Backups** y un plan de restauración probado.
 - **Cumplimiento**: aviso de cookies/analítica, exportación y borrado de datos del

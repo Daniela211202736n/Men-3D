@@ -186,6 +186,7 @@ gráfico para lectores de pantalla.
 | Subida de archivos | Se valida la firma binaria real del archivo, no el `Content-Type` que declara el cliente: un ejecutable renombrado a `.glb` se rechaza. Límite de 25 MB. |
 | Entrega de archivos | El nombre lo genera el servidor (32 hex + extensión) y la ruta solo acepta ese formato exacto. No hay listado de directorio ni se usa nada del nombre original: no hay superficie de *path traversal*. Verificado con `../../../etc/passwd` y su variante codificada. |
 | Fuerza bruta | 20 intentos cada 5 minutos en `/api/auth`; 300 por minuto en el resto. |
+| Webhooks de pago | No los protege un token sino la firma de la notificación (HMAC-SHA256, comparación en tiempo constante, ventana de 15 minutos contra reenvíos). El estado del cobro se consulta contra la pasarela en vez de creerle al mensaje, y el importe se coteja con el total del pedido. Detalle en [PAYMENTS.md](PAYMENTS.md). |
 | Dependencias | Se descartó `@fastify/static` por vulnerabilidades de *path traversal* y se sirve lo necesario con una ruta propia de lista blanca. |
 
 ## 11. Camino a producción
@@ -193,8 +194,8 @@ gráfico para lectores de pantalla.
 1. **Base**: cambiar el provider de Prisma a `postgresql` y correr las
    migraciones. El esquema ya es portable.
 2. **Assets**: subir los GLB a un bucket con CDN y guardar la URL pública.
-3. **Pagos**: implementar el adaptador real contra la interfaz `PaymentProvider`
-   y su webhook; el ciclo del pedido ya contempla el cobro diferido.
+3. **Pagos**: MercadoPago ya está implementado; falta probarlo contra una cuenta
+   real y publicar la URL del webhook en su panel (ver [PAYMENTS.md](PAYMENTS.md)).
 4. **KDS**: cambiar el bus en memoria por Redis pub/sub para correr varias
    instancias.
 5. **Despliegue**: la API en un contenedor detrás de un proxy (con `trustProxy`

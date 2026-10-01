@@ -44,7 +44,8 @@ deterministas y las traducciones manuales).
 - **Opiniones** por plato y del local, con respuesta del restaurante.
 - **Maridajes sugeridos** con el motivo a la vista.
 - **Carta multilenguaje** que detecta el idioma del teléfono.
-- **Pedido y pago** desde el celular, con seguimiento del estado.
+- **Pedido y pago** desde el celular (MercadoPago o cobro simulado), con
+  seguimiento del estado que se actualiza solo mientras se acredita.
 - **Puntos de fidelidad** canjeables por descuento.
 - **Ficha del local** con mapa, horarios, redes y botón de compartir.
 
@@ -92,6 +93,7 @@ men-3d/
 | [docs/DATABASE.md](docs/DATABASE.md)         | Esquema relacional tabla por tabla |
 | [docs/UX-FLOWS.md](docs/UX-FLOWS.md)         | Flujos de usuario principales |
 | [docs/API.md](docs/API.md)                   | Referencia de endpoints |
+| [docs/PAYMENTS.md](docs/PAYMENTS.md)         | Pasarelas de pago: MercadoPago, webhooks y cómo agregar otra |
 | [docs/ROADMAP.md](docs/ROADMAP.md)           | Qué falta para producción, por prioridad |
 
 ---
@@ -123,9 +125,10 @@ a arrancar con el de desarrollo).
 Esto es un MVP funcional de punta a punta, no un sistema en producción. Lo que
 está deliberadamente sin terminar:
 
-- **Pagos**: corre el proveedor simulado. Los adaptadores de Stripe y
-  MercadoPago están declarados con su contrato pero sin implementar —cada uno es
-  un archivo nuevo, no una refactorización (`apps/api/src/modules/payments/`).
+- **Pagos**: MercadoPago (Checkout Pro) está implementado, con webhook firmado
+  y verificación del cobro contra su API — ver [docs/PAYMENTS.md](docs/PAYMENTS.md).
+  Por defecto corre el proveedor simulado para que la demo funcione sin
+  credenciales. El adaptador de Stripe sigue declarado sin implementar.
 - **Base de datos**: SQLite para que el MVP arranque sin infraestructura. El
   esquema no usa nada específico de SQLite, así que pasar a PostgreSQL es cambiar
   una línea (ver [docs/DATABASE.md](docs/DATABASE.md)).

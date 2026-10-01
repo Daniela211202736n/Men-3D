@@ -30,6 +30,8 @@ la URL.
 | 422 | Falló la validación del esquema |
 | 429 | Límite de tasa (20 / 5 min en auth, 300 / min en el resto) |
 | 501 | Proveedor de pagos no implementado |
+| 502 | No se pudo hablar con la pasarela de pagos (la notificación se reintenta) |
+| 503 | Falta configuración (pasarela sin credenciales, IA sin clave) |
 
 ---
 
@@ -62,6 +64,10 @@ GET  /loyalty?guestId=                   saldo de puntos
 POST /orders                             crear pedido y cobrar
 GET  /orders/:code                       seguimiento por código corto
 ```
+
+`POST /orders` devuelve `{ order, checkoutUrl, clientSecret }`. Con una pasarela
+con redirección (MercadoPago) el pedido queda en `PENDING_PAYMENT` y hay que
+mandar al comensal a `checkoutUrl`; lo pagado lo confirma el webhook.
 
 ### `GET /menu`
 
@@ -140,6 +146,17 @@ PUT  /translations/:dishId/:locale      corrección manual (queda MANUAL)
 
 `POST /translations` responde `503 AI_NOT_CONFIGURED` con un mensaje claro si no
 hay `ANTHROPIC_API_KEY`, en vez de fallar de forma rara.
+
+## Webhooks de pago
+
+```
+POST /api/payments/webhook/:provider          notificación de la pasarela
+GET  /api/payments/webhook/:provider/health   estado de configuración
+```
+
+Rutas públicas: las autentica la firma de la notificación, no un token. El
+código de respuesta decide si la pasarela reintenta — ver
+[PAYMENTS.md](PAYMENTS.md).
 
 ## Archivos
 

@@ -6,6 +6,7 @@
  *   /api/auth/*                         — alta y login del backoffice
  *   /api/public/:slug/*                 — todo lo que ve el comensal (sin auth)
  *   /api/admin/*                        — backoffice (requiere JWT del tenant)
+ *   POST /api/payments/webhook/:provider — notificaciones de la pasarela
  *   POST /upload  ·  GET /assets/:name  — modelos 3D e imagenes
  */
 import cors from '@fastify/cors';
@@ -24,6 +25,7 @@ import adminSettingsRoutes from './modules/admin/settings.routes.js';
 import assetRoutes from './modules/assets/routes.js';
 import authRoutes from './modules/auth/routes.js';
 import kdsStreamRoutes from './modules/orders/kds.routes.js';
+import paymentWebhookRoutes from './modules/payments/routes.js';
 import publicRoutes from './modules/menu/routes.js';
 import { prisma } from './prisma.js';
 
@@ -93,6 +95,10 @@ export async function buildApp(): Promise<FastifyInstance> {
     },
     { prefix: '/api/admin' },
   );
+
+  // --- webhooks de las pasarelas de pago ------------------------------------
+  // Publico a proposito: lo autentica la firma de la notificacion, no un token.
+  await app.register(paymentWebhookRoutes, { prefix: '/api/payments' });
 
   // --- stream del KDS ------------------------------------------------------
   // Fuera del grupo anterior: se autentica con su propio ticket de 60 s.

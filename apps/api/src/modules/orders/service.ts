@@ -7,10 +7,12 @@ import {
   OrderStatus,
   type OrderCreateInput,
   type OrderDto,
+  type PaymentStatus,
 } from '@men3d/shared';
 
 import type { Order, OrderItem, Payment } from '@prisma/client';
 
+import { env } from '../../env.js';
 import { badRequest, conflict, notFound } from '../../lib/errors.js';
 import { generateOrderCode } from '../../lib/ids.js';
 import { toOrderDto } from '../../lib/serialize.js';
@@ -19,6 +21,15 @@ import type { PublicTenant } from '../../plugins/tenant.js';
 import { earnPoints, getOrCreateAccount, quoteRedemption, redeemPoints } from '../loyalty/service.js';
 import { getPaymentProvider } from '../payments/provider.js';
 import { kdsHub } from './kds.js';
+
+/**
+ * Puntos que acredita un pedido. Lo usan el cobro inmediato y la liquidacion
+ * por webhook: si cada camino tuviera su formula, un mismo pedido acreditaria
+ * distinto segun como se haya pagado.
+ */
+export function computeEarnedPoints(totalCents: number): number {
+  return Math.floor((totalCents / 100) * LOYALTY_POINTS.PER_CURRENCY_UNIT);
+}
 
 /** Transiciones validas: evita que una pantalla desincronizada retroceda un pedido. */
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
@@ -57,7 +68,6 @@ export interface CreateOrderResult {
 export async function createOrder(
   tenant: PublicTenant,
   input: OrderCreateInput,
-  returnUrl: string,
 ): Promise<CreateOrderResult> {
   // 1. Los platos tienen que ser de este tenant, estar activos y disponibles.
   const dishIds = [...new Set(input.items.map((i) => i.dishId))];
@@ -112,9 +122,7 @@ export async function createOrder(
     discountCents: redeemed.discountCents,
   });
 
-  const pointsEarned = Math.floor(
-    (totals.totalCents / 100) * LOYALTY_POINTS.PER_CURRENCY_UNIT,
-  );
+  const pointsEarned = computeEarnedPoints(totals.totalCents);
 
   const code = await allocateOrderCode(tenant.id);
 
@@ -142,6 +150,13 @@ export async function createOrder(
   });
 
   // 4. Cobro.
+  // La vuelta de la pasarela lleva al comensal al seguimiento de *su* pedido,
+  // por eso la URL se arma aca: el codigo recien existe despues de crearlo.
+  const returnUrl = new URL(
+    `/m/${tenant.slug}/pedido/${created.code}`,
+    env.PUBLIC_WEB_URL,
+  ).toString();
+
   const provider = getPaymentProvider();
   const charge = await provider.createCharge({
     orderId: created.id,
@@ -172,7 +187,7 @@ export async function createOrder(
     payment,
   };
   if (charge.status === 'SUCCEEDED') {
-    order = await settlePaidOrder(tenant, created.id, {
+    order = await settlePaidOrder(tenant.id, created.id, {
       guestId: input.guestId,
       pointsRedeemed: redeemed.points,
       pointsEarned,
@@ -183,7 +198,12 @@ export async function createOrder(
     checkoutUrl: charge.checkoutUrl ?? null,
     clientSecret: charge.clientSecret ?? null,
   });
-  kdsHub.publish(tenant.id, { type: 'order.created', order: dto });
+
+  // La cocina solo se entera de lo que esta pagado. Con una pasarela con
+  // redireccion el pedido todavia no lo esta: lo anuncia el webhook.
+  if (dto.status === OrderStatus.PAID) {
+    kdsHub.publish(tenant.id, { type: 'order.created', order: dto });
+  }
 
   return {
     order: dto,
@@ -192,14 +212,20 @@ export async function createOrder(
   };
 }
 
-/** Marca el pedido como pagado y mueve los puntos. Idempotente. */
+/**
+ * Marca el pedido como pagado y mueve los puntos. Idempotente.
+ *
+ * Toma el `tenantId` suelto y no el tenant entero porque lo llaman dos caminos
+ * muy distintos: el cobro inmediato, que ya tiene el tenant cargado, y el
+ * webhook, que solo conoce el pedido.
+ */
 export async function settlePaidOrder(
-  tenant: PublicTenant,
+  tenantId: string,
   orderId: string,
   opts: { guestId?: string | null; pointsRedeemed: number; pointsEarned: number },
 ) {
   const current = await prisma.order.findFirst({
-    where: { id: orderId, tenantId: tenant.id },
+    where: { id: orderId, tenantId },
     include: { items: true, payment: true },
   });
   if (!current) throw notFound('Pedido');
@@ -207,7 +233,7 @@ export async function settlePaidOrder(
 
   if (opts.guestId && opts.pointsRedeemed > 0) {
     await redeemPoints({
-      tenantId: tenant.id,
+      tenantId,
       guestId: opts.guestId,
       points: opts.pointsRedeemed,
       orderId,
@@ -215,7 +241,7 @@ export async function settlePaidOrder(
   }
   if (opts.guestId && opts.pointsEarned > 0) {
     await earnPoints({
-      tenantId: tenant.id,
+      tenantId,
       guestId: opts.guestId,
       points: opts.pointsEarned,
       reason: 'ORDER',
@@ -269,6 +295,96 @@ export async function updateOrderStatus(
   const dto = toOrderDto(updated, currency);
   kdsHub.publish(tenantId, { type: 'order.updated', order: dto });
   return dto;
+}
+
+/**
+ * Aplica a un pedido lo que informa la pasarela.
+ *
+ * Es el unico camino por el que un pedido pagado con redireccion llega a PAID,
+ * y es idempotente a proposito: MercadoPago reintenta cada notificacion hasta
+ * recibir un 2xx, asi que la misma puede llegar varias veces.
+ *
+ * Tres comprobaciones antes de dar nada por cobrado:
+ *   1. el pedido existe;
+ *   2. el importe informado coincide con el total del pedido;
+ *   3. el estado que llega es realmente "cobrado".
+ */
+export async function applyPaymentUpdate(input: {
+  orderId: string;
+  providerRef: string;
+  provider: string;
+  status: PaymentStatus;
+  amountCents: number | null;
+  raw: unknown;
+}): Promise<{ outcome: 'settled' | 'recorded' | 'ignored'; reason?: string }> {
+  const order = await prisma.order.findUnique({
+    where: { id: input.orderId },
+    include: { items: true, payment: true, tenant: { select: { currency: true } } },
+  });
+  if (!order) return { outcome: 'ignored', reason: 'el pedido no existe' };
+
+  // Un importe distinto del total significa que algo se manipulo en el medio:
+  // se deja constancia y no se marca como pagado.
+  const amountMismatch =
+    input.amountCents !== null && input.amountCents !== order.totalCents;
+
+  await prisma.payment.upsert({
+    where: { orderId: order.id },
+    create: {
+      orderId: order.id,
+      provider: input.provider,
+      providerRef: input.providerRef,
+      status: amountMismatch ? 'FAILED' : input.status,
+      amountCents: input.amountCents ?? order.totalCents,
+      currency: order.tenant.currency,
+      rawPayload: JSON.stringify(input.raw),
+    },
+    update: {
+      providerRef: input.providerRef,
+      status: amountMismatch ? 'FAILED' : input.status,
+      ...(input.amountCents !== null ? { amountCents: input.amountCents } : {}),
+      rawPayload: JSON.stringify(input.raw),
+    },
+  });
+
+  if (amountMismatch) {
+    return {
+      outcome: 'recorded',
+      reason: `el importe informado (${input.amountCents}) no coincide con el del pedido (${order.totalCents})`,
+    };
+  }
+
+  if (input.status !== 'SUCCEEDED') {
+    return { outcome: 'recorded', reason: `estado ${input.status}` };
+  }
+
+  if (order.status === OrderStatus.PAID || isAfterPaid(order.status)) {
+    // Ya estaba cobrado: la notificacion es un reintento.
+    return { outcome: 'ignored', reason: 'el pedido ya estaba pagado' };
+  }
+
+  const settled = await settlePaidOrder(order.tenantId, order.id, {
+    guestId: order.guestId,
+    pointsRedeemed: order.pointsRedeemed,
+    pointsEarned: computeEarnedPoints(order.totalCents),
+  });
+
+  // Recien ahora la cocina se entera del pedido.
+  kdsHub.publish(order.tenantId, {
+    type: 'order.created',
+    order: toOrderDto(settled, order.tenant.currency),
+  });
+
+  return { outcome: 'settled' };
+}
+
+/** `true` si el pedido ya paso por PAID (esta en cocina, listo o servido). */
+function isAfterPaid(status: string): boolean {
+  return (
+    status === OrderStatus.IN_KITCHEN ||
+    status === OrderStatus.READY ||
+    status === OrderStatus.SERVED
+  );
 }
 
 export async function listOrders(

@@ -36,7 +36,8 @@ type CartAction =
   | { type: 'setQuantity'; dishId: string; quantity: number }
   | { type: 'remove'; dishId: string }
   | { type: 'clear' }
-  | { type: 'hydrate'; lines: CartLine[] };
+  /** Carga el carrito guardado de un restaurante; el slug viaja con las lineas. */
+  | { type: 'hydrate'; slug: string; lines: CartLine[] };
 
 function reducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
@@ -90,7 +91,7 @@ function reducer(state: CartState, action: CartAction): CartState {
     case 'clear':
       return { ...state, lines: [] };
     case 'hydrate':
-      return { ...state, lines: action.lines };
+      return { slug: action.slug, lines: action.lines };
     default:
       return state;
   }
@@ -110,6 +111,17 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 const storageKey = (slug: string) => `men3d.cart.${slug}`;
 
+function readStored(slug: string): CartLine[] {
+  try {
+    const raw = localStorage.getItem(storageKey(slug));
+    const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+    return Array.isArray(parsed) ? (parsed as CartLine[]) : [];
+  } catch {
+    // Storage bloqueado o contenido corrupto: se arranca con el carrito vacio.
+    return [];
+  }
+}
+
 export function CartProvider({
   slug,
   children,
@@ -117,25 +129,33 @@ export function CartProvider({
   slug: string;
   children: ReactNode;
 }): ReactNode {
-  const [state, dispatch] = useReducer(reducer, { slug, lines: [] });
+  // El carrito guardado se lee al crear el estado, no en un efecto. Hacerlo en
+  // un efecto abria una ventana en la que el efecto de guardado corria primero
+  // y pisaba el almacenamiento con una lista vacia — y con el doble montaje de
+  // StrictMode la segunda lectura ya encontraba ese vacio, asi que el carrito
+  // se perdia en cada recarga.
+  const [state, dispatch] = useReducer(reducer, slug, (initialSlug) => ({
+    slug: initialSlug,
+    lines: readStored(initialSlug),
+  }));
 
-  // Rehidratacion al montar (y al cambiar de restaurante).
+  // Solo hace falta rehidratar al cambiar de restaurante; el inicial ya vino
+  // cargado del inicializador.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey(slug));
-      dispatch({ type: 'hydrate', lines: raw ? (JSON.parse(raw) as CartLine[]) : [] });
-    } catch {
-      dispatch({ type: 'hydrate', lines: [] });
-    }
-  }, [slug]);
+    if (state.slug === slug) return;
+    dispatch({ type: 'hydrate', slug, lines: readStored(slug) });
+  }, [slug, state.slug]);
 
   useEffect(() => {
+    // Mientras el estado siga siendo el del restaurante anterior no se guarda
+    // nada: escribir ahi copiaria el carrito de un local en el de otro.
+    if (state.slug !== slug) return;
     try {
-      localStorage.setItem(storageKey(slug), JSON.stringify(state.lines));
+      localStorage.setItem(storageKey(state.slug), JSON.stringify(state.lines));
     } catch {
       /* sin persistencia: el carrito dura lo que la pestaña */
     }
-  }, [slug, state.lines]);
+  }, [slug, state.slug, state.lines]);
 
   const value = useMemo<CartContextValue>(() => {
     const itemCount = state.lines.reduce((acc, l) => acc + l.quantity, 0);

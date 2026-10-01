@@ -31,10 +31,17 @@
             │ Pagar
             ▼
   ┌─────────────────────────────┐
-  │  SEGUIMIENTO  ·  código A7F3│   Se refresca cada 15 s mientras está vivo;
-  │  Pagado → En cocina → Listo │   deja de pedir al llegar a un estado final
-  └─────────────────────────────┘
+  │  SEGUIMIENTO  ·  código A7F3│   Se refresca cada 15 s mientras está vivo
+  │  Pagado → En cocina → Listo │   (cada 5 s mientras se acredita el pago);
+  └─────────────────────────────┘   deja de pedir al llegar a un estado final
 ```
+
+**Con MercadoPago** el paso de pagar ocurre fuera de la app: el comensal sale al
+checkout y vuelve al seguimiento de su pedido. Si vuelve antes de que el pago se
+acredite, la pantalla lo dice con todas las letras —"si ya pagaste, puede tardar
+unos segundos; no hace falta que pagues de nuevo"— y se actualiza sola. Y si
+cierra la pestaña sin volver, el pedido entra a cocina igual: lo confirma el
+webhook, no su navegador.
 
 ### Detalles que importan
 

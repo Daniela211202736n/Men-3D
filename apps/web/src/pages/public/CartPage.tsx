@@ -78,7 +78,7 @@ export function CartPage(): ReactNode {
     if (sending) return;
     setSending(true);
     try {
-      const { order } = await publicApi.createOrder(slug, {
+      const { order, checkoutUrl } = await publicApi.createOrder(slug, {
         items: cart.lines.map((line) => ({
           dishId: line.dishId,
           quantity: line.quantity,
@@ -91,8 +91,18 @@ export function CartPage(): ReactNode {
         redeemPoints: redeemablePoints || undefined,
         guestId,
       });
-      track(AnalyticsEvent.PURCHASE, { value: order.totalCents });
       cart.clear();
+
+      if (checkoutUrl) {
+        // Pasarela con redireccion (MercadoPago): el pago ocurre fuera de la
+        // PWA, asi que todavia no hay compra que registrar — la confirma el
+        // webhook. Se sale del sitio con `replace` para que el boton "atras"
+        // del celular no devuelva al carrito ya vaciado.
+        window.location.replace(checkoutUrl);
+        return;
+      }
+
+      track(AnalyticsEvent.PURCHASE, { value: order.totalCents });
       navigate(`/m/${slug}/pedido/${order.code}`);
     } catch (error) {
       toast.show(
