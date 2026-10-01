@@ -14,14 +14,14 @@ Ordenado por lo que bloquea cobrar el primer peso.
 
 ## 2. Necesario antes de abrir a clientes
 
-- **Pruebas automatizadas.** Hay 64 pruebas (`npm test`) sobre las reglas que
-  cobran mal si se rompen: totales e IVA, canje de puntos, máquina de estados del
-  pedido, listas portables, clasificación del recomendador y todo el adaptador de
-  MercadoPago (firma, conversión de importes, mapeo de estados). Faltan
-  las de aislamiento entre tenants contra una base real y un *end-to-end* del
-  flujo escanear → ver en 3D → pedir; la verificación de ese flujo hoy es un
-  recorrido de navegador manual. El camino del dinero sí tiene pruebas de
-  integración (liquidación, idempotencia, importe manipulado).
+- **Pruebas automatizadas.** Hay 79 pruebas (`npm test`): totales e IVA, canje de
+  puntos, máquina de estados del pedido, el adaptador de MercadoPago completo,
+  el almacenamiento local y S3, y las de integración del camino del dinero
+  (liquidación, idempotencia, importe manipulado, concurrencia). **Falta la que
+  más importa: el aislamiento entre tenants contra la base real.** Hoy esa
+  propiedad —de la que depende todo el diseño multi-tenant— solo está verificada
+  con comprobaciones manuales. Falta también un *end-to-end* del flujo
+  escanear → ver en 3D → pedir.
 - **Recuperación de contraseña** y gestión de usuarios del equipo.
 - **Backups** y un plan de restauración probado.
 - **KDS multi-instancia**: el bus de eventos sigue en memoria, así que la API no
