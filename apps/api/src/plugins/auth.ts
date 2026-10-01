@@ -102,6 +102,17 @@ export default fp(async (app) => {
       throw unauthorized('Sesion vencida o token invalido');
     }
     const payload = request.user;
+
+    // Un token con alcance no es una sesion. El ticket del KDS viaja en una URL
+    // —y una URL termina en logs de proxy, en el historial y en el `Referer`—
+    // asi que si sirviera como sesion, filtrarlo daria acceso al backoffice
+    // entero. Solo lo acepta la ruta del stream, que lo verifica aparte.
+    if (payload.scope) {
+      throw unauthorized(
+        'Este token solo sirve para el stream de cocina, no para el backoffice',
+      );
+    }
+
     // El token podria ser valido pero el usuario haber sido dado de baja.
     const user = await prisma.user.findFirst({
       where: { id: payload.sub, isActive: true },
