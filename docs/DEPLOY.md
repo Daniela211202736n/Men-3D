@@ -146,6 +146,29 @@ npm run db:migrate -- --name lo-que-cambiaste
 
 ---
 
+## Extensiones de PostgreSQL
+
+La primera migración ejecuta `CREATE EXTENSION unaccent` y `pg_trgm`, que son
+lo que hace que la búsqueda ignore tildes. **Si el usuario de la base no puede
+crearlas, el despliegue falla ahí.**
+
+En PostgreSQL 13 y posteriores las dos son *trusted*, así que al dueño de la
+base le alcanza. En un servicio administrado puede no alcanzar:
+
+- **RDS, Cloud SQL, Azure**: hay que habilitarlas desde el panel o con un
+  usuario con permisos, una sola vez.
+- **Supabase, Neon, Railway**: vienen disponibles; se crean solas.
+- **Alguno más restringido**: pedile al proveedor que las habilite, o corré
+  `CREATE EXTENSION` a mano con un usuario con permisos antes de migrar.
+
+Comprobarlo antes de desplegar es un comando:
+
+```bash
+psql "$DATABASE_URL" -c "CREATE EXTENSION IF NOT EXISTS unaccent; CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+```
+
+---
+
 ## El bucket y el CDN
 
 El bucket necesita **lectura pública** (los modelos los pide el navegador del

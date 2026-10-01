@@ -65,7 +65,7 @@ const PARRILLA_MENU: SeedCategory[] = [
         prepMinutes: 10,
         allergens: ['MILK'],
         dietTags: ['VEGETARIAN', 'GLUTEN_FREE', 'KETO'],
-        ingredients: ['Provolone', 'Oregano', 'Aceite de oliva'],
+        ingredients: ['Provolone', 'Orégano', 'Aceite de oliva'],
         isFeatured: true,
       },
       {
@@ -89,7 +89,7 @@ const PARRILLA_MENU: SeedCategory[] = [
       {
         name: 'Milanesa napolitana con papas',
         description:
-          'Milanesa de ternera de 220 g, salsa de tomate, jamon y mozzarella gratinada. Con papas bastón.',
+          'Milanesa de ternera de 220 g, salsa de tomate, jamón y mozzarella gratinada. Con papas bastón.',
         priceCents: 1450000,
         compareAtPriceCents: 1680000,
         model: 'milanesa-napolitana',
@@ -98,7 +98,7 @@ const PARRILLA_MENU: SeedCategory[] = [
         prepMinutes: 18,
         allergens: ['GLUTEN', 'EGGS', 'MILK'],
         ingredients: [
-          'Ternera', 'Pan rallado', 'Huevo', 'Tomate', 'Jamon', 'Mozzarella', 'Papas',
+          'Ternera', 'Pan rallado', 'Huevo', 'Tomate', 'Jamón', 'Mozzarella', 'Papas',
         ],
         isFeatured: true,
       },
@@ -130,7 +130,7 @@ const PARRILLA_MENU: SeedCategory[] = [
         prepMinutes: 5,
         allergens: ['EGGS', 'MILK'],
         dietTags: ['VEGETARIAN', 'GLUTEN_FREE'],
-        ingredients: ['Huevo', 'Leche', 'Azucar', 'Crema'],
+        ingredients: ['Huevo', 'Leche', 'Azúcar', 'Crema'],
       },
     ],
   },
@@ -152,7 +152,7 @@ const PARRILLA_MENU: SeedCategory[] = [
         isFeatured: true,
       },
       {
-        name: 'Cafe cortado',
+        name: 'Café cortado',
         description: 'Espresso doble con leche texturada.',
         priceCents: 280000,
         model: 'cafe-cortado',
@@ -161,7 +161,7 @@ const PARRILLA_MENU: SeedCategory[] = [
         prepMinutes: 3,
         allergens: ['MILK'],
         dietTags: ['VEGETARIAN', 'GLUTEN_FREE'],
-        ingredients: ['Cafe', 'Leche'],
+        ingredients: ['Café', 'Leche'],
       },
     ],
   },
@@ -175,7 +175,7 @@ const VERDE_MENU: SeedCategory[] = [
       {
         name: 'Ensalada mediterranea',
         description:
-          'Mix de hojas, tomates cherry, queso feta, aceitunas y aderezo de limon.',
+          'Mix de hojas, tomates cherry, queso feta, aceitunas y aderezo de limón.',
         priceCents: 890000,
         model: 'ensalada-mediterranea',
         portionGrams: 350,
@@ -183,24 +183,24 @@ const VERDE_MENU: SeedCategory[] = [
         prepMinutes: 8,
         allergens: ['MILK'],
         dietTags: ['VEGETARIAN', 'GLUTEN_FREE', 'KETO'],
-        ingredients: ['Hojas verdes', 'Tomate cherry', 'Feta', 'Aceitunas', 'Limon'],
+        ingredients: ['Hojas verdes', 'Tomate cherry', 'Feta', 'Aceitunas', 'Limón'],
         isFeatured: true,
       },
     ],
   },
   {
     name: 'Bebidas frias',
-    description: 'Sin azucar agregada',
+    description: 'Sin azúcar agregada',
     dishes: [
       {
         name: 'Limonada con jengibre',
-        description: 'Limon, jengibre fresco y menta. Sin azucar agregada.',
+        description: 'Limón, jengibre fresco y menta. Sin azúcar agregada.',
         priceCents: 420000,
         portionGrams: 400,
         calories: 45,
         prepMinutes: 4,
         dietTags: ['VEGAN', 'GLUTEN_FREE', 'LACTOSE_FREE'],
-        ingredients: ['Limon', 'Jengibre', 'Menta'],
+        ingredients: ['Limón', 'Jengibre', 'Menta'],
       },
     ],
   },
@@ -404,9 +404,9 @@ async function seedPairings(
 
 async function seedReviews(tenantId: string, dishIds: Map<string, string>) {
   const dishReviews: Array<[string, number, string, string]> = [
-    ['Milanesa napolitana con papas', 5, 'Enorme y bien gratinada. La porcion que se ve en 3D es exacta.', 'Sofia R.'],
-    ['Milanesa napolitana con papas', 4, 'Muy rica, las papas podrian venir mas crocantes.', 'Martin L.'],
-    ['Milanesa napolitana con papas', 5, 'Alcanza para dos. Pedimos una y media y sobro.', 'Caro'],
+    ['Milanesa napolitana con papas', 5, 'Enorme y bien gratinada. La porción que se ve en 3D es exacta.', 'Sofía R.'],
+    ['Milanesa napolitana con papas', 4, 'Muy rica, las papas podrían venir más crocantes.', 'Martín L.'],
+    ['Milanesa napolitana con papas', 5, 'Alcanza para dos. Pedimos una y media y sobró.', 'Caro'],
     ['Provoleta a la parrilla', 5, 'Justo en el punto, llega burbujeando a la mesa.', 'Diego F.'],
     ['Provoleta a la parrilla', 4, 'Muy buena, un poco salada para mi gusto.', 'Ana'],
     ['Hamburguesa clasica doble', 4, 'Jugosa. El pan aguanta bien hasta el final.', 'Nico'],
@@ -480,7 +480,7 @@ async function seedTraffic(
     ['Copa de Malbec', { attention: 0.3, conversion: 0.4 }],
     // El caso interesante: lo miran mucho y casi nadie lo pide.
     ['Flan casero con crema', { attention: 0.65, conversion: 0.06 }],
-    ['Cafe cortado', { attention: 0.2, conversion: 0.35 }],
+    ['Café cortado', { attention: 0.2, conversion: 0.35 }],
     ['Ensalada mediterranea', { attention: 0.9, conversion: 0.3 }],
     ['Limonada con jengibre', { attention: 0.4, conversion: 0.35 }],
   ]);
@@ -786,7 +786,7 @@ async function main() {
       'Un postre liviano despues de una porcion contundente.'],
     ['Provoleta a la parrilla', 'Copa de Malbec', 85,
       'Clasico infalible: queso fundido y tinto joven.'],
-    ['Hamburguesa clasica doble', 'Cafe cortado', 50,
+    ['Hamburguesa clasica doble', 'Café cortado', 50,
       'Un cortado corto para cerrar sin pesadez.'],
     ['Empanadas de carne (3 unidades)', 'Copa de Malbec', 80,
       'La combinacion de siempre, por algo no falla.'],

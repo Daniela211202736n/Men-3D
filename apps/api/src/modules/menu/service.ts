@@ -87,9 +87,51 @@ export function resolveLocale(
   return isLocale(fallback) ? fallback : DEFAULT_LOCALE;
 }
 
+/**
+ * Ids de los platos que coinciden con el texto buscado, ignorando tildes.
+ *
+ * Va en SQL crudo porque Prisma no sabe expresar `unaccent`, y sin eso la
+ * busqueda queda rota para media carta en español: quien escribe "cafe" en el
+ * teclado del celular no encuentra "Café cortado", y el restaurante nunca se
+ * entera de por que nadie pide ese plato. Tambien al reves —buscar "Café"
+ * encuentra "cafe"— porque los dos lados pasan por la misma normalizacion.
+ *
+ * Devuelve ids y no los platos enteros para no duplicar el resto de los filtros
+ * (dietas, alergenos, categoria, archivados): esos los sigue armando Prisma,
+ * que es donde se leen. Son dos consultas en vez de una, pero la primera va por
+ * indice GIN y devuelve solo ids.
+ *
+ * Busca en el nombre, la descripcion, los ingredientes y las traducciones: un
+ * comensal que puso el telefono en ingles escribe "breaded" y tiene que
+ * encontrar la milanesa.
+ */
+async function buscarIdsDePlatos(tenantId: string, q: string): Promise<string[]> {
+  // `%` y `_` son comodines de LIKE: sin escaparlos, buscar "100%" traeria
+  // cualquier cosa y "_" cualquier letra. El parametro va ligado, asi que esto
+  // no es por inyeccion —de eso se ocupa el driver— sino porque el comensal
+  // escribe texto, no patrones.
+  const escapado = q.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const patron = `%${escapado}%`;
+  const filas = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT DISTINCT d."id"
+    FROM "Dish" d
+    LEFT JOIN "DishIngredient" i ON i."dishId" = d."id"
+    LEFT JOIN "DishTranslation" t ON t."dishId" = d."id"
+    WHERE d."tenantId" = ${tenantId}
+      AND (
+        men3d_unaccent(d."name") LIKE men3d_unaccent(${patron})
+        OR men3d_unaccent(COALESCE(d."description", '')) LIKE men3d_unaccent(${patron})
+        OR men3d_unaccent(COALESCE(i."name", '')) LIKE men3d_unaccent(${patron})
+        OR men3d_unaccent(COALESCE(t."name", '')) LIKE men3d_unaccent(${patron})
+        OR men3d_unaccent(COALESCE(t."description", '')) LIKE men3d_unaccent(${patron})
+      )`;
+  return filas.map((f) => f.id);
+}
+
 export function buildDishWhere(
   tenantId: string,
   query: MenuQuery,
+  idsDeBusqueda?: string[],
 ): Prisma.DishWhereInput {
   const where: Prisma.DishWhereInput = {
     tenantId,
@@ -97,22 +139,10 @@ export function buildDishWhere(
     category: { isActive: true },
   };
 
-  if (query.q) {
-    const q = query.q;
-    // `mode: 'insensitive'` no es opcional: sin el, PostgreSQL distingue
-    // mayusculas y buscar "Milanesa" no encuentra "milanesa napolitana".
-    //
-    // Sigue siendo una busqueda por subcadena: no ignora tildes ni tolera
-    // errores de tipeo. Para eso hacen falta las extensiones `unaccent` y
-    // `pg_trgm` con un indice GIN — anotado en docs/ROADMAP.md.
-    const like = { contains: q, mode: 'insensitive' } as const;
-    where.OR = [
-      { name: like },
-      { description: like },
-      { ingredients: { some: { name: like } } },
-      { translations: { some: { name: like } } },
-    ];
-  }
+  // La busqueda por texto NO se arma aca: necesita `unaccent`, que Prisma no
+  // sabe expresar. La resuelve `buscarIdsDePlatos` y llega ya resuelta en
+  // `idsDeBusqueda`.
+  if (idsDeBusqueda) where.id = { in: idsDeBusqueda };
 
   if (query.categoryId) where.categoryId = query.categoryId;
   if (query.only3d) where.modelGlbUrl = { not: null };
@@ -152,6 +182,11 @@ export async function getMenu(
     ? tenant.defaultLocale
     : DEFAULT_LOCALE;
 
+  // Solo cuando hay texto: sin busqueda no hay por que pagar una consulta mas.
+  const idsDeBusqueda = query.q
+    ? await buscarIdsDePlatos(tenant.id, query.q)
+    : undefined;
+
   const [categories, dishes, ratings, venueRating] = await Promise.all([
     prisma.category.findMany({
       where: { tenantId: tenant.id, isActive: true },
@@ -159,7 +194,7 @@ export async function getMenu(
       include: { translations: true },
     }),
     prisma.dish.findMany({
-      where: buildDishWhere(tenant.id, query),
+      where: buildDishWhere(tenant.id, query, idsDeBusqueda),
       // Destacados primero, luego el orden manual del dueño, luego alfabetico.
       orderBy: [
         { isFeatured: 'desc' },

@@ -21,10 +21,29 @@ Dos consecuencias de esa decisión, documentadas donde importan:
   `serviceModes`, `features`). `lib/lists.ts` es el único archivo que conoce ese
   detalle.
 
-**La búsqueda usa `mode: 'insensitive'`** en `buildDishWhere()`. No es opcional:
-sin eso, buscar "Milanesa" no encuentra "milanesa napolitana". Sigue siendo una
-búsqueda por subcadena —no ignora tildes ni tolera errores de tipeo—; para eso
-hacen falta las extensiones `unaccent` y `pg_trgm`.
+**La búsqueda ignora mayúsculas y tildes.** La resuelve `buscarIdsDePlatos()`
+en SQL crudo, porque Prisma no sabe expresar `unaccent`.
+
+Es la diferencia entre que la carta se pueda buscar y que no. `mode:
+'insensitive'` resuelve mayúsculas pero **no tildes**, y en español eso deja
+afuera medio vocabulario gastronómico: quien escribe "cafe" en el teclado del
+celular —sin tilde, como escribe casi todo el mundo— no encuentra "Café
+cortado", y el restaurante nunca se entera de por qué ese plato no se pide. El
+problema es fácil de no ver porque los datos de ejemplo solían estar escritos
+sin tildes; ahora los llevan a propósito.
+
+`men3d_unaccent()` normaliza los dos lados de la comparación: minúsculas y sin
+diacríticos, con la `ñ` plegada a `n`. Es un envoltorio `IMMUTABLE` sobre
+`unaccent()` —que de por sí es `STABLE`, y PostgreSQL no indexa expresiones que
+no sean inmutables— con el diccionario fijado.
+
+Hay índices GIN de trigramas (`pg_trgm`) sobre esa expresión en el nombre y la
+descripción del plato, en los ingredientes y en las traducciones. Sin ellos, un
+`LIKE '%texto%'` recorre la tabla entera.
+
+La búsqueda devuelve ids y los filtros restantes los sigue armando Prisma
+(dietas, alérgenos, categoría, archivados). Son dos consultas en vez de una,
+pero evita duplicar en SQL reglas que ya están expresadas una sola vez.
 
 ## Dar de baja un restaurante
 
