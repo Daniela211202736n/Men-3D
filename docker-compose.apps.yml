@@ -44,8 +44,14 @@ services:
       PUBLIC_API_URL: http://localhost:8080
       PAYMENTS_PROVIDER: mock
       STORAGE_DRIVER: local
+      # Bus del KDS por Redis. Con una sola instancia no haria falta, pero asi
+      # esta pila ejercita el mismo camino que produccion: si el bus con Redis
+      # se rompe, se nota aca y no con una cocina que deja de recibir pedidos.
+      REDIS_URL: redis://redis:6379
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       api-migrate:
         condition: service_completed_successfully

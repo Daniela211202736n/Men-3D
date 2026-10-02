@@ -20,7 +20,7 @@ import { prisma } from '../../prisma.js';
 import type { PublicTenant } from '../../plugins/tenant.js';
 import { earnPoints, getOrCreateAccount, quoteRedemption, redeemPoints } from '../loyalty/service.js';
 import { getPaymentProvider } from '../payments/provider.js';
-import { kdsHub } from './kds.js';
+import { kdsBus } from './kds.js';
 
 /**
  * Puntos que acredita un pedido. Lo usan el cobro inmediato y la liquidacion
@@ -202,7 +202,7 @@ export async function createOrder(
   // La cocina solo se entera de lo que esta pagado. Con una pasarela con
   // redireccion el pedido todavia no lo esta: lo anuncia el webhook.
   if (dto.status === OrderStatus.PAID) {
-    kdsHub.publish(tenant.id, { type: 'order.created', order: dto });
+    kdsBus().publish(tenant.id, { type: 'order.created', order: dto });
   }
 
   return {
@@ -293,7 +293,7 @@ export async function updateOrderStatus(
   });
 
   const dto = toOrderDto(updated, currency);
-  kdsHub.publish(tenantId, { type: 'order.updated', order: dto });
+  kdsBus().publish(tenantId, { type: 'order.updated', order: dto });
   return dto;
 }
 
@@ -370,7 +370,7 @@ export async function applyPaymentUpdate(input: {
   });
 
   // Recien ahora la cocina se entera del pedido.
-  kdsHub.publish(order.tenantId, {
+  kdsBus().publish(order.tenantId, {
     type: 'order.created',
     order: toOrderDto(settled, order.tenant.currency),
   });

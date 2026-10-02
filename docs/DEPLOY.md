@@ -146,6 +146,70 @@ npm run db:migrate -- --name lo-que-cambiaste
 
 ---
 
+## Varias instancias de la API
+
+Con **una** instancia no hace falta nada. Apenas hay **dos**, `REDIS_URL` deja
+de ser opcional.
+
+| Variable | Valor |
+| --- | --- |
+| `REDIS_URL` | `redis://host:6379`. Vacío = bus en memoria (una sola instancia) |
+
+El bus que empuja los pedidos a la pantalla de cocina (SSE) vive en memoria por
+defecto. Con dos instancias detrás de un balanceador, el mozo carga el pedido
+contra una y la pantalla de cocina está conectada a la otra: **el pedido se
+guarda bien, la API responde bien, y la cocina nunca se entera.** No hay error,
+ni en el log ni en pantalla; el pedido aparece cuando alguien va a preguntar.
+Es el peor tipo de fallo que puede tener un KDS.
+
+Con `REDIS_URL` el bus pasa a Redis pub/sub, un canal por restaurante.
+
+Detalles que importan si hay que tocarlo:
+
+- **Dos conexiones, no una.** Una conexión suscrita a Redis entra en modo
+  suscriptor y deja de aceptar otros comandos: con una sola, el primer
+  `publish` después de un `subscribe` falla.
+- **Publicar no espera.** El flujo del pedido no puede quedar colgado ni fallar
+  porque el bus falle: el pedido ya está guardado en PostgreSQL y esa es la
+  verdad. Si Redis no responde se pierde el aviso y se registra; la pantalla
+  recupera el estado al reconectar, que es lo que hace al abrirse.
+- **Redis caído no tumba la API.** La carta, los pedidos y el backoffice siguen
+  funcionando; lo único que se degrada es el refresco en vivo del KDS.
+
+El stream es SSE, así que el balanceador no puede cortar conexiones largas ni
+acumularlas en un buffer. Para nginx está resuelto en `apps/web/nginx.conf`
+(`proxy_buffering off`); con otro balanceador hay que configurar lo mismo.
+
+---
+
+## Política de seguridad de contenido (CSP)
+
+Está puesta en `apps/web/nginx.conf`, y **se midió contra la aplicación real**
+en lugar de copiarla: se cargaron la carta, el visor 3D, la ficha del local y
+las siete pantallas del backoffice con la cabecera puesta, escuchando
+`securitypolicyviolation`, hasta no quedar ninguna.
+
+Lo que justifica cada directiva poco obvia:
+
+| Directiva | Por qué |
+| --- | --- |
+| `'wasm-unsafe-eval'` | `<model-viewer>` compila WebAssembly para decodificar la malla |
+| `blob:` en `worker-src` e `img-src` | Los workers de decodificación y las texturas |
+| `'unsafe-inline'` **solo** en `style-src` | React escribe los estilos como atributo `style`. No habilita scripts |
+| `frame-src openstreetmap.org` | El mapa del local es un iframe suyo |
+
+Un detalle medido que conviene saber: **sin `'wasm-unsafe-eval'` el visor no se
+rompe**, cae a un decodificador en JavaScript. Lo que deja es una violación
+(`script-src ← wasm-eval`) en la consola cada vez que alguien abre un plato, y
+un decodeo más lento en el celular. Es justo el tipo de degradación que no se
+nota probando a mano.
+
+**Si se agrega una fuente externa** —una tipografía, un pixel de analítica, un
+widget— hay que volver a medir. El síntoma de no hacerlo es un recurso que no
+carga sin ningún error visible para el usuario.
+
+---
+
 ## Respaldos
 
 Un respaldo que nunca se restauró no es un respaldo: es un archivo. Por eso hay

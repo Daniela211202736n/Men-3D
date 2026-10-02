@@ -13,6 +13,20 @@
 name: men3d
 
 services:
+  # Bus de eventos del KDS cuando la API corre con mas de una instancia. En
+  # desarrollo no hace falta —sin REDIS_URL el bus vive en memoria— pero esta
+  # aca para poder probar el camino de produccion.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped

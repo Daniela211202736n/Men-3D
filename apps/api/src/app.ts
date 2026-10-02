@@ -29,6 +29,7 @@ import kdsStreamRoutes from './modules/orders/kds.routes.js';
 import paymentWebhookRoutes from './modules/payments/routes.js';
 import billingRoutes, { billingWebhookRoutes } from './modules/billing/routes.js';
 import { iniciarTareas } from './modules/billing/tareas.js';
+import { cerrarBusKds, kdsBus } from './modules/orders/kds.js';
 import publicRoutes from './modules/menu/routes.js';
 import { prisma } from './prisma.js';
 
@@ -124,6 +125,15 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Suspension por impago y limpieza de tokens vencidos.
   iniciarTareas(app);
+
+  // El bus del KDS con Redis abre conexiones propias: sin esto, apagar la API
+  // las deja colgadas y el proceso no termina.
+  app.addHook('onClose', async () => {
+    await cerrarBusKds();
+  });
+  if (kdsBus().modo === 'redis') {
+    app.log.info('bus del KDS: Redis (la API puede correr con varias instancias)');
+  }
 
   return app;
 }

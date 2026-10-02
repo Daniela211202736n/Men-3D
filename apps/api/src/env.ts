@@ -54,6 +54,14 @@ const schema = z.object({
    * si son muchos, conviene subirlo. Tambien lo suben las pruebas, que recorren
    * el flujo entero de autenticacion muchas veces seguidas.
    */
+  /**
+   * Redis para el bus de eventos del KDS.
+   *
+   * Sin esto el bus vive en memoria, que alcanza con una sola instancia de la
+   * API. Con varias es obligatorio: sin el, una pantalla de cocina conectada a
+   * otra instancia nunca se entera de los pedidos nuevos, y el fallo es mudo.
+   */
+  REDIS_URL: z.string().url().optional(),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
   MAIL_DRIVER: z.enum(['log', 'resend']).default('log'),
   /** Remitente verificado, p. ej. "Men-3D <hola@tu-dominio.com>". */

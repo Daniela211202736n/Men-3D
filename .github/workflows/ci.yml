@@ -12,6 +12,19 @@ jobs:
     services:
       # Las pruebas de integracion tocan la base de verdad: liquidacion de
       # pagos, idempotencia, borrado de un restaurante.
+      # El bus del KDS con varias instancias. La prueba levanta dos buses y
+      # comprueba que un pedido publicado en uno llega al otro: con un doble no
+      # se probaria nada.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
       postgres:
         image: postgres:17-alpine
         env:
@@ -30,6 +43,7 @@ jobs:
       DATABASE_URL: postgresql://men3d:men3d_ci@localhost:5432/men3d_test?schema=public
       # El end-to-end levanta la API; sin un secreto valido se niega a arrancar.
       JWT_SECRET: clave-de-integracion-continua-con-largo-suficiente
+      REDIS_URL: redis://localhost:6379
       CI: 'true'
 
     steps:

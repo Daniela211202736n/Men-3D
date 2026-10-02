@@ -32,10 +32,12 @@ Ordenado por lo que bloquea cobrar el primer peso.
   (`npm run e2e`, Playwright, en CI): escanear → buscar → ver en 3D → pedir →
   pagar → seguir, en un viewport de celular y contra la compilación de
   producción.
-- **KDS multi-instancia**: el bus de eventos sigue en memoria, así que la API no
-  escala horizontalmente sin que una pantalla de cocina pierda pedidos.
-- **CSP**: `<model-viewer>` necesita WebAssembly y workers; una política mal
-  ajustada rompe el visor en silencio, así que hay que armarla midiendo.
+- **KDS multi-instancia: hecho.** Con `REDIS_URL` el bus pasa a Redis pub/sub y
+  la API escala horizontalmente. Probado con dos buses contra un Redis real: un
+  pedido publicado en uno llega a la cocina conectada al otro.
+- **CSP: hecha**, midiendo. En `apps/web/nginx.conf`, verificada sin violaciones
+  en la carta, el visor 3D, el mapa y las siete pantallas del backoffice,
+  incluido el stream SSE del KDS. Ver DEPLOY.md.
 - **Cumplimiento**: aviso de cookies/analítica, exportación y borrado de datos del
   comensal (hoy son identificadores opacos en su navegador, lo que ayuda, pero el
   aviso hace falta igual).
