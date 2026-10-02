@@ -38,9 +38,13 @@ Ordenado por lo que bloquea cobrar el primer peso.
 - **CSP: hecha**, midiendo. En `apps/web/nginx.conf`, verificada sin violaciones
   en la carta, el visor 3D, el mapa y las siete pantallas del backoffice,
   incluido el stream SSE del KDS. Ver DEPLOY.md.
-- **Cumplimiento**: aviso de cookies/analítica, exportación y borrado de datos del
-  comensal (hoy son identificadores opacos en su navegador, lo que ayuda, pero el
-  aviso hace falta igual).
+- **Cumplimiento: hecho.** Aviso de medición con las dos respuestas pesando lo
+  mismo —y que si dice que no, no sale ni un evento, comprobado contando las
+  peticiones del navegador—, más una pantalla para ver, descargar y borrar los
+  datos. Borrar anonimiza los pedidos en vez de borrarlos: son comprobantes de
+  venta que el restaurante está obligado a conservar. Ver UX-FLOWS.md §F.
+  Falta la parte que no es código: política de privacidad y términos escritos
+  por alguien que sepa del marco legal de cada país donde se opere.
 - **Facturación de la suscripción: hecha.** Débito mensual con MercadoPago
   (`preapproval`), período de gracia de 7 días y degradación al plan gratuito
   por impago —la carta del comensal nunca se apaga, ver PAYMENTS.md. Falta

@@ -83,6 +83,8 @@ const es: Dict = {
   'venue.whatsapp': 'Escribir por WhatsApp',
   'venue.reviews': 'Opiniones del local',
   'venue.share': 'Compartir la carta',
+  'privacy.title': 'Tus datos',
+  'privacy.link': 'Tus datos y privacidad',
   'common.loading': 'Cargando...',
   'common.retry': 'Reintentar',
   'common.error': 'Algo salio mal',
@@ -164,6 +166,8 @@ const en: Dict = {
   'venue.whatsapp': 'Message on WhatsApp',
   'venue.reviews': 'Venue reviews',
   'venue.share': 'Share the menu',
+  'privacy.title': 'Your data',
+  'privacy.link': 'Your data and privacy',
   'common.loading': 'Loading...',
   'common.retry': 'Retry',
   'common.error': 'Something went wrong',
@@ -176,6 +180,8 @@ const en: Dict = {
 
 const pt: Dict = {
   ...en,
+  'privacy.title': 'Seus dados',
+  'privacy.link': 'Seus dados e privacidade',
   'nav.menu': 'Menu',
   'nav.venue': 'O local',
   'nav.cart': 'Pedido',

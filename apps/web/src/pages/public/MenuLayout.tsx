@@ -3,7 +3,9 @@
  * la cabecera con el pie fijo del pedido.
  */
 import { useEffect, type ReactNode } from 'react';
-import { NavLink, Outlet, useParams, useSearchParams } from 'react-router-dom';
+import { Link, NavLink, Outlet, useParams, useSearchParams } from 'react-router-dom';
+
+import { ConsentBanner } from '../../components/ConsentBanner.js';
 
 import { AnalyticsEvent, setAnalyticsSlug, track, trackOnce } from '../../lib/analytics.js';
 import { publicApi } from '../../lib/api.js';
@@ -124,6 +126,15 @@ function MenuShell(): ReactNode {
         <Outlet />
       </main>
 
+      {/* Discreto pero siempre alcanzable: quien quiere ver o borrar sus datos
+          no deberia tener que buscar el enlace. */}
+      <footer className="center" style={{ padding: '4px 16px 16px' }}>
+        <Link to={`/m/${slug}/privacidad`} className="tiny muted">
+          {t('privacy.link')}
+        </Link>
+      </footer>
+
+      <ConsentBanner slug={slug} />
       <CartBar />
     </div>
   );

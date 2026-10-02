@@ -31,6 +31,7 @@ import billingRoutes, { billingWebhookRoutes } from './modules/billing/routes.js
 import { iniciarTareas } from './modules/billing/tareas.js';
 import { cerrarBusKds, kdsBus } from './modules/orders/kds.js';
 import publicRoutes from './modules/menu/routes.js';
+import privacyRoutes from './modules/privacy/routes.js';
 import { prisma } from './prisma.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
@@ -91,6 +92,8 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // --- carta publica -------------------------------------------------------
   await app.register(publicRoutes, { prefix: '/api/public/:slug' });
+  // Ver y borrar los datos del comensal. Va aparte por su limite mas estricto.
+  await app.register(privacyRoutes, { prefix: '/api/public/:slug' });
 
   // --- backoffice ----------------------------------------------------------
   await app.register(

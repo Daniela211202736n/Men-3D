@@ -184,6 +184,27 @@ export const publicApi = {
   registerScan: (slug: string, token: string) =>
     request<void>(`/api/public/${slug}/scan`, { method: 'POST', body: { token } }),
 
+  /** Todo lo que el restaurante tiene de este dispositivo. */
+  privacyData: (slug: string, guestId: string, signal?: AbortSignal) =>
+    request<{
+      restaurante: string;
+      guestId: string;
+      generadoEl: string;
+      explicacion: string;
+      pedidos: unknown[];
+      opiniones: unknown[];
+      puntos: { saldo: number; acumuladoHistorico: number; movimientos: unknown[] } | null;
+      analitica: string;
+    }>(`/api/public/${slug}/privacy/data`, { query: { guestId }, signal }),
+
+  deletePrivacyData: (slug: string, guestId: string) =>
+    request<{
+      pedidosAnonimizados: number;
+      opinionesBorradas: number;
+      cuentaDePuntosBorrada: boolean;
+      mensaje: string;
+    }>(`/api/public/${slug}/privacy/data`, { method: 'DELETE', query: { guestId } }),
+
   loyalty: (slug: string, guestId: string, signal?: AbortSignal) =>
     request<LoyaltyAccountDto>(`/api/public/${slug}/loyalty`, {
       query: { guestId },

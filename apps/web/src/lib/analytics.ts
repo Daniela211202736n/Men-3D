@@ -1,6 +1,9 @@
 /**
  * Cola de eventos de analitica.
  *
+ * Nada de esto corre sin consentimiento: `track` sale antes de encolar si el
+ * comensal no acepto. Ver `consent.ts`.
+ *
  * Nada se envia de inmediato: los eventos se acumulan y salen en lote cada dos
  * segundos (o al ocultarse la pestaña). En un celular con 4G, veinte requests
  * sueltos mientras el cliente gira un modelo 3D se notan; un request cada dos
@@ -9,6 +12,7 @@
 import { AnalyticsEvent, type AnalyticsEventInput } from '@men3d/shared';
 
 import { publicApi } from './api.js';
+import { puedeMedir } from './consent.js';
 import { getSessionId } from './session.js';
 
 const FLUSH_INTERVAL_MS = 2000;
@@ -56,6 +60,11 @@ export interface TrackOptions {
 }
 
 export function track(type: AnalyticsEvent, options: TrackOptions = {}): void {
+  // El corte va aca y no en el envio: sin consentimiento el evento no se
+  // encola siquiera, asi que no queda nada en memoria que pudiera salir mas
+  // tarde si la respuesta cambiara a mitad de la visita.
+  if (!puedeMedir()) return;
+
   queue.push({
     type,
     sessionId: getSessionId(),

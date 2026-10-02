@@ -189,3 +189,61 @@ contraseña recién elegida es lo que confirma que quedó bien.
 
 En desarrollo no hace falta un servidor de correo: con `MAIL_DRIVER=log` el
 correo entero sale por la consola de la API, con el enlace listo para pegar.
+
+---
+
+## F. Los datos del comensal
+
+### El aviso
+
+Aparece abajo, no como un muro, y recién un segundo después de que la carta ya
+se ve. El comensal escaneó un QR para saber qué hay de comer, no para contestar
+un formulario.
+
+**Las dos respuestas pesan lo mismo**: dos columnas iguales, mismo estilo,
+ninguna en color. No hay un "Aceptar" grande y un "Preferencias" gris que lleva
+a otra pantalla. Si rechazar cuesta más que aceptar, el consentimiento no es
+libre —y además es maltratar a alguien que está por pedir la cena.
+
+**Mientras no responde, no se mide nada.** El silencio no es un sí, así que no
+hay apuro por arrancarle una respuesta.
+
+Esto cubre solo la medición de uso. El carrito, el pedido y el idioma no se
+preguntan: son el servicio que vino a usar, y sin ellos no puede pedir. Meter
+todo bajo el mismo "aceptar" es justamente lo que hace que la gente acepte sin
+leer.
+
+### Qué pasa si dice que no
+
+No sale ni un evento. El corte está en `track()`, antes de encolar: así no
+queda nada en memoria que pudiera salir más tarde si la respuesta cambiara a
+mitad de la visita. Hay una prueba de navegador que lo cuenta contando las
+peticiones que salen, no leyendo el código.
+
+### Ver y borrar
+
+Hay un enlace discreto al pie de la carta, siempre alcanzable. La pantalla dice
+en castellano qué se guarda, deja descargarlo en un archivo y deja borrarlo.
+
+**Borrar no borra los pedidos: los anonimiza.** Es la única parte que puede
+sorprender, así que se dice antes de confirmar y no después. Un pedido es un
+comprobante de venta que el restaurante está obligado a conservar; si el
+comensal pudiera hacerlo desaparecer, le estaríamos rompiendo los libros a
+nuestro cliente. Lo que se va es todo lo que señala a una persona —nombre,
+teléfono, mail, las aclaraciones y el vínculo con el dispositivo— y queda la
+transacción: fecha, platos, importes.
+
+Las opiniones y los puntos sí se borran enteros. Que los puntos se pierden se
+avisa antes de confirmar.
+
+### La analítica no figura, y no es un olvido
+
+Los eventos de uso se guardan contra un código de visita que **no está
+vinculado al dispositivo en ninguna tabla**. No es que no la busquemos: no
+existe forma de saber cuáles de esos eventos son de quien pregunta, ni para
+nosotros ni para el restaurante.
+
+Que ese vínculo no exista es lo que hace que la analítica sea anónima de verdad
+y no "anonimizada". Si alguna vez se agrega esa columna, pasa a ser dato
+personal y hay que volver sobre esto: hay una prueba que falla si el texto que
+lo explica deja de ser cierto.

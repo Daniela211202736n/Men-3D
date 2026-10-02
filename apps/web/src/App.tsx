@@ -53,6 +53,9 @@ const VenueSettingsPage = lazy(() =>
 const PlanPage = lazy(() =>
   import('./pages/admin/PlanPage.js').then((m) => ({ default: m.PlanPage })),
 );
+const PrivacyPage = lazy(() =>
+  import('./pages/public/PrivacyPage.js').then((m) => ({ default: m.PrivacyPage })),
+);
 const TeamPage = lazy(() =>
   import('./pages/admin/TeamPage.js').then((m) => ({ default: m.TeamPage })),
 );
@@ -79,6 +82,7 @@ export function App(): ReactNode {
         <Route path="local" element={<VenuePage />} />
         <Route path="pedido" element={<CartPage />} />
         <Route path="pedido/:code" element={<OrderStatusPage />} />
+        <Route path="privacidad" element={<Lazy element={<PrivacyPage />} />} />
       </Route>
 
       {/* --- recuperacion de contraseña: fuera del guardia de sesion, porque
