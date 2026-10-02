@@ -355,11 +355,20 @@ orquestadores saben solos cuándo un contenedor está listo.
 
 ## Cosas que no están resueltas
 
-- **El KDS no escala horizontalmente.** El bus de eventos es en memoria, así que
-  con más de una réplica de la API una pantalla de cocina solo recibe los
-  pedidos que entraron por *su* réplica. Hace falta Redis pub/sub; el resto del
-  código solo conoce `publish` y `subscribe`.
-- **No hay CSP.** `<model-viewer>` necesita WebAssembly y workers, y una política
-  mal ajustada rompe el visor 3D en silencio. Hay que armarla midiendo.
-- **Backups.** PostgreSQL gestionado los trae; si lo corrés vos, hace falta
-  `pg_dump` programado y una restauración probada.
+Lo que antes estaba acá —el KDS sin escalar, la falta de CSP y los backups— ya
+está hecho y documentado más arriba. Lo que sigue abierto:
+
+- **Los cobros no se probaron contra cuentas reales.** Están verificadas la
+  lógica, la firma de los webhooks, la verificación de importes y la
+  idempotencia, con pruebas. Lo que falta es una transacción de verdad: ni el
+  pago de un pedido, ni el débito mensual, ni el cobro de configuración inicial
+  pasaron por una cuenta de MercadoPago real.
+- **El driver `s3` tampoco.** Lo verificado es el cableado contra un doble, no
+  una integración con AWS o R2.
+- **Stripe no está implementado.** Solo MercadoPago y el proveedor simulado.
+- **No hay correo de confirmación de pedido** al comensal. El de recuperación de
+  contraseña sí.
+- **La política de privacidad y los términos no están escritos.** El mecanismo
+  está (consentimiento que corta de verdad, exportación y borrado); el texto
+  legal lo tiene que escribir alguien que conozca el marco del país donde
+  operes.
