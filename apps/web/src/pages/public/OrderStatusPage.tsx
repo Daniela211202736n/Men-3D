@@ -12,6 +12,7 @@ import { OrderStatus } from '@men3d/shared';
 
 import { ErrorState, Spinner } from '../../components/ui.js';
 import { AnalyticsEvent, track } from '../../lib/analytics.js';
+import { getGuestId } from '../../lib/session.js';
 import { publicApi } from '../../lib/api.js';
 import { money, relativeTime } from '../../lib/format.js';
 import { useAsync } from '../../lib/useAsync.js';
@@ -32,7 +33,9 @@ export function OrderStatusPage(): ReactNode {
   const { slug, venue, locale, t } = useVenue();
 
   const { data: order, loading, error, reload } = useAsync(
-    (signal) => publicApi.order(slug, code, signal),
+    // El guestId identifica al dispositivo que hizo el pedido: sin el, el
+    // servidor no devuelve el nombre ni las aclaraciones.
+    (signal) => publicApi.order(slug, code, getGuestId(), signal),
     [slug, code],
   );
 

@@ -232,8 +232,18 @@ export const publicApi = {
       { method: 'POST', body },
     ),
 
-  order: (slug: string, code: string, signal?: AbortSignal) =>
-    request<OrderDto>(`/api/public/${slug}/orders/${code}`, { signal }),
+  /**
+   * Un pedido por su codigo.
+   *
+   * El `guestId` va para que el servidor devuelva tambien el nombre y las
+   * aclaraciones: con el codigo solo —que son cuatro caracteres y se canta en
+   * el mostrador— no alcanza para dar datos personales.
+   */
+  order: (slug: string, code: string, guestId?: string, signal?: AbortSignal) =>
+    request<OrderDto>(`/api/public/${slug}/orders/${code}`, {
+      ...(guestId ? { query: { guestId } } : {}),
+      signal,
+    }),
 };
 
 /* --------------------------------------------------------------- backoffice */

@@ -425,15 +425,36 @@ export async function listOrders(
   return orders.map((o) => toOrderDto(o, currency));
 }
 
+/**
+ * Un pedido por su codigo, para la pantalla de seguimiento.
+ *
+ * **El codigo corto no alcanza para dar datos personales.** Son cuatro
+ * caracteres sobre un alfabeto de 32: poco mas de un millon de combinaciones,
+ * y un restaurante con unos miles de pedidos hace que una de cada pocos
+ * cientos acierte. Probando codigos al azar se leen los pedidos de otros.
+ *
+ * El codigo es corto a proposito —se canta en voz alta en el mostrador— asi
+ * que la solucion no es alargarlo sino no devolver con el nada que señale a
+ * una persona. Con el codigo solo salen el estado, los platos y el importe,
+ * que es lo que hace falta para seguir el pedido y para que el mostrador lo
+ * busque. El nombre y las aclaraciones salen unicamente si quien pregunta
+ * demuestra ser el mismo dispositivo que lo hizo.
+ */
 export async function getOrderByCode(
   tenantId: string,
   currency: string,
   code: string,
+  guestId?: string,
 ): Promise<OrderDto> {
   const order = await prisma.order.findUnique({
     where: { tenantId_code: { tenantId, code: code.toUpperCase() } },
     include: { items: true, payment: true },
   });
   if (!order) throw notFound('Pedido');
-  return toOrderDto(order, currency);
+
+  const esSuyo = Boolean(guestId && order.guestId && order.guestId === guestId);
+  const dto = toOrderDto(order, currency);
+  if (esSuyo) return dto;
+
+  return { ...dto, customerName: null, notes: null };
 }
