@@ -425,6 +425,9 @@ model Order {
   customerEmail String?
   notes         String?
   guestId       String?
+  /// Idioma en el que el comensal hizo el pedido. Sin esto, el correo de
+  /// confirmacion de alguien que navego en ingles saldria en español.
+  locale        String?
 
   pointsEarned   Int @default(0)
   pointsRedeemed Int @default(0)

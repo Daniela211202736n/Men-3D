@@ -21,6 +21,7 @@ import type { PublicTenant } from '../../plugins/tenant.js';
 import { earnPoints, getOrCreateAccount, quoteRedemption, redeemPoints } from '../loyalty/service.js';
 import { getPaymentProvider } from '../payments/provider.js';
 import { kdsBus } from './kds.js';
+import { enviarConfirmacion } from './confirmation-mail.js';
 
 /**
  * Puntos que acredita un pedido. Lo usan el cobro inmediato y la liquidacion
@@ -140,6 +141,7 @@ export async function createOrder(
       customerName: input.customerName ?? null,
       customerPhone: input.customerPhone ?? null,
       customerEmail: input.customerEmail ?? null,
+      locale: input.locale ?? null,
       notes: input.notes ?? null,
       guestId: input.guestId ?? null,
       pointsRedeemed: redeemed.points,
@@ -203,6 +205,12 @@ export async function createOrder(
   // redireccion el pedido todavia no lo esta: lo anuncia el webhook.
   if (dto.status === OrderStatus.PAID) {
     kdsBus().publish(tenant.id, { type: 'order.created', order: dto });
+    enviarConfirmacion({
+      order,
+      nombreDelLocal: tenant.name,
+      slug: tenant.slug,
+      currency: tenant.currency,
+    });
   }
 
   return {
@@ -319,7 +327,12 @@ export async function applyPaymentUpdate(input: {
 }): Promise<{ outcome: 'settled' | 'recorded' | 'ignored'; reason?: string }> {
   const order = await prisma.order.findUnique({
     where: { id: input.orderId },
-    include: { items: true, payment: true, tenant: { select: { currency: true } } },
+    // El nombre y el slug son para el correo de confirmacion.
+    include: {
+      items: true,
+      payment: true,
+      tenant: { select: { currency: true, name: true, slug: true } },
+    },
   });
   if (!order) return { outcome: 'ignored', reason: 'el pedido no existe' };
 
@@ -373,6 +386,13 @@ export async function applyPaymentUpdate(input: {
   kdsBus().publish(order.tenantId, {
     type: 'order.created',
     order: toOrderDto(settled, order.tenant.currency),
+  });
+
+  enviarConfirmacion({
+    order: settled,
+    nombreDelLocal: order.tenant.name,
+    slug: order.tenant.slug,
+    currency: order.tenant.currency,
   });
 
   return { outcome: 'settled' };

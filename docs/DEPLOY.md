@@ -366,8 +366,6 @@ está hecho y documentado más arriba. Lo que sigue abierto:
 - **El driver `s3` tampoco.** Lo verificado es el cableado contra un doble, no
   una integración con AWS o R2.
 - **Stripe no está implementado.** Solo MercadoPago y el proveedor simulado.
-- **No hay correo de confirmación de pedido** al comensal. El de recuperación de
-  contraseña sí.
 - **La política de privacidad y los términos no están escritos.** El mecanismo
   está (consentimiento que corta de verdad, exportación y borrado); el texto
   legal lo tiene que escribir alguien que conozca el marco del país donde

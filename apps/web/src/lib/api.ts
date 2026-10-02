@@ -223,6 +223,8 @@ export const publicApi = {
       notes?: string;
       redeemPoints?: number;
       guestId?: string;
+      /** Idioma de la carta: define el del correo de confirmacion. */
+      locale?: string;
     },
   ) =>
     request<{ order: OrderDto; checkoutUrl: string | null; clientSecret: string | null }>(

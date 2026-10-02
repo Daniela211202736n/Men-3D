@@ -234,6 +234,8 @@ export const orderCreateSchema = z.object({
   redeemPoints: z.number().int().min(0).optional(),
   /** Identifica al comensal anonimo entre sesiones (localStorage). */
   guestId: z.string().max(64).optional(),
+  /** Idioma en el que esta mirando la carta: define el idioma del correo. */
+  locale: localeSchema.optional(),
 });
 export type OrderCreateInput = z.infer<typeof orderCreateSchema>;
 

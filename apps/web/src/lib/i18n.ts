@@ -63,6 +63,8 @@ const es: Dict = {
   'cart.table': 'Mesa',
   'cart.notes': 'Aclaraciones para la cocina',
   'cart.name': 'Tu nombre',
+  'cart.email': 'Email (opcional)',
+  'cart.emailHint': 'Solo para mandarte la confirmacion. Podes pedir sin dejarlo.',
   'cart.checkout': 'Pagar y enviar a cocina',
   'cart.remove': 'Quitar',
   'cart.points': 'Usar {n} puntos ({amount})',
@@ -146,6 +148,8 @@ const en: Dict = {
   'cart.table': 'Table',
   'cart.notes': 'Notes for the kitchen',
   'cart.name': 'Your name',
+  'cart.email': 'Email (optional)',
+  'cart.emailHint': 'Only to send you the confirmation. You can order without it.',
   'cart.checkout': 'Pay and send to kitchen',
   'cart.remove': 'Remove',
   'cart.points': 'Use {n} points ({amount})',
@@ -180,6 +184,8 @@ const en: Dict = {
 
 const pt: Dict = {
   ...en,
+  'cart.email': 'Email (opcional)',
+  'cart.emailHint': 'So para enviar a confirmacao. Voce pode pedir sem deixar.',
   'privacy.title': 'Seus dados',
   'privacy.link': 'Seus dados e privacidade',
   'nav.menu': 'Menu',

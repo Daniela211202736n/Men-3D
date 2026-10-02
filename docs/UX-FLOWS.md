@@ -247,3 +247,27 @@ Que ese vínculo no exista es lo que hace que la analítica sea anónima de verd
 y no "anonimizada". Si alguna vez se agrega esa columna, pasa a ser dato
 personal y hay que volver sobre esto: hay una prueba que falla si el texto que
 lo explica deja de ser cierto.
+
+---
+
+## G. El correo de confirmación
+
+Sale cuando el pedido queda pagado de verdad, por los **dos** caminos que
+llevan ahí: el cobro inmediato y el aviso de la pasarela. Enganchar uno y
+olvidarse del otro es fácil, y el olvido no se nota —el pedido entra igual— así
+que hay una prueba por cada camino.
+
+**El email es opcional y se dice que lo es.** Quien come en el local muchas
+veces no deja ninguno, y está bien: el seguimiento ya lo tiene en la pantalla.
+Pedirle un correo para poder pedir sería exigir un dato que no necesitamos.
+
+**Va en el idioma en el que pidió.** El pedido guarda su `locale` —una columna
+que se agregó para esto— porque mandarle el correo en español a alguien que
+recorrió la carta en inglés tira por la borda la traducción automática justo en
+el último paso. Los idiomas sin texto propio caen al inglés, no al español: es
+la elección que más gente entiende entre quienes no hablan ninguno de los tres.
+
+**Se despacha sin esperarlo.** El pedido ya está pagado y la cocina ya lo
+recibió; que el correo tarde o falle no puede demorar la respuesta ni, mucho
+menos, hacerla fallar. Hay una prueba de eso: con un proveedor de correo que
+lanza error, el pedido queda igual en `PAID`.

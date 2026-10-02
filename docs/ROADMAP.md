@@ -10,7 +10,7 @@ Ordenado por lo que bloquea cobrar el primer peso.
 | **PostgreSQL** | **Hecho.** Migraciones versionadas, búsqueda sin tildes (`unaccent` + `pg_trgm` con índices GIN), baja de restaurantes en orden de dependencias | Búsqueda difusa por similitud (los índices de trigramas ya están puestos; falta el umbral y el orden por cercanía). |
 | **Modelos en CDN** | **Hecho.** Driver `s3` con subida firmada directa al bucket; `local` sigue para desarrollo | Probarlo contra un bucket real: lo verificado es el cableado contra un doble, no una integración con AWS/R2. |
 | **Imágenes y despliegue** | **Hecho.** Dockerfiles de API y PWA, compose completo, migraciones como paso aparte, CI que compila las imágenes | Elegir plataforma y publicar las imágenes en un registro. |
-| **Correo transaccional** | **Recuperación de contraseña hecha** (driver `log` para desarrollo, Resend para producción) | Confirmación de pedido al comensal. Probar Resend con un dominio verificado. |
+| **Correo transaccional** | **Hecho.** Recuperación de contraseña y confirmación de pedido, en el idioma en que pidió el comensal. Driver `log` para desarrollo, Resend para producción | Probar Resend con un dominio verificado. |
 
 ## 2. Necesario antes de abrir a clientes
 
