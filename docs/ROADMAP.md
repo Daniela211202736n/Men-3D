@@ -28,8 +28,10 @@ Ordenado por lo que bloquea cobrar el primer peso.
   de B en lectura, escritura, superficie pública y tokens) y las del onboarding
   (reglas del equipo, límites del plan, recuperación de contraseña). Esa primera
   tanda de aislamiento encontró un agujero real: el ticket del KDS —que viaja en
-  una URL— servía como sesión completa del backoffice. Falta un *end-to-end* del
-  flujo escanear → ver en 3D → pedir.
+  una URL— servía como sesión completa del backoffice. **El *end-to-end* del comensal ya está**
+  (`npm run e2e`, Playwright, en CI): escanear → buscar → ver en 3D → pedir →
+  pagar → seguir, en un viewport de celular y contra la compilación de
+  producción.
 - **KDS multi-instancia**: el bus de eventos sigue en memoria, así que la API no
   escala horizontalmente sin que una pantalla de cocina pierda pedidos.
 - **CSP**: `<model-viewer>` necesita WebAssembly y workers; una política mal

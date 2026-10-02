@@ -2,7 +2,7 @@
   "name": "men3d",
   "version": "0.1.0",
   "private": true,
-  "description": "Men-3D \u2014 PWA de menu digital interactivo en 3D/RA para restaurantes (SaaS multi-tenant)",
+  "description": "Men-3D — PWA de menu digital interactivo en 3D/RA para restaurantes (SaaS multi-tenant)",
   "license": "MIT",
   "workspaces": [
     "packages/*",
@@ -27,6 +27,11 @@
     "models:sample": "node scripts/generate-sample-models.mjs",
     "setup": "npm install && npm run models:sample && npm run build -w @men3d/shared && npm run db:up && npm run db:deploy && npm run db:seed",
     "test": "npm run test -w @men3d/api",
-    "typecheck": "npm run typecheck -w @men3d/shared && npm run typecheck -w @men3d/api && npm run typecheck -w @men3d/web"
+    "typecheck": "npm run typecheck -w @men3d/shared && npm run typecheck -w @men3d/api && npm run typecheck -w @men3d/web",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
   }
 }

@@ -32,3 +32,7 @@ apps/web/src/**/*.d.ts
 # Respaldos de la base: nunca al repositorio.
 backups/
 *.dump
+
+# Salidas de Playwright.
+test-results/
+playwright-report/

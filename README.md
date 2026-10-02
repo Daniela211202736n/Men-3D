@@ -122,6 +122,7 @@ men-3d/
 | `npm run build` | Compila los tres paquetes |
 | `npm run typecheck` | Chequeo de tipos de todo el monorepo |
 | `npm test` | Pruebas de la API |
+| `npm run e2e` | Recorrido del comensal en un navegador real (escanear → 3D → pedir → pagar) |
 | `npm run db:up` / `npm run db:down` | Levanta o apaga PostgreSQL |
 | `npm run db:migrate` | Crea y aplica una migración nueva |
 | `npm run db:deploy` | Aplica las migraciones pendientes (producción) |

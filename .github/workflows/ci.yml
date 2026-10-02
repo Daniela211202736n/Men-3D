@@ -28,6 +28,9 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://men3d:men3d_ci@localhost:5432/men3d_test?schema=public
+      # El end-to-end levanta la API; sin un secreto valido se niega a arrancar.
+      JWT_SECRET: clave-de-integracion-continua-con-largo-suficiente
+      CI: 'true'
 
     steps:
       - uses: actions/checkout@v4
@@ -61,6 +64,26 @@ jobs:
 
       - name: Auditoría de dependencias
         run: npm audit --audit-level=high
+
+      - name: Instalar Chromium para el end-to-end
+        run: npx playwright install --with-deps chromium
+
+      - name: Datos de demostración
+        # El recorrido del comensal necesita una carta cargada.
+        run: npm run db:seed
+
+      - name: End-to-end del comensal
+        # Escanear → ver en 3D → pedir → pagar. La compilación de producción ya
+        # corrió arriba, así que `vite preview` sirve ese mismo build.
+        run: npm run e2e
+
+      - name: Guardar el informe si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
 
   # Que las imagenes compilen es parte del contrato: un Dockerfile roto no se
   # descubre al desplegar.
