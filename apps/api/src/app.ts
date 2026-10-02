@@ -27,7 +27,10 @@ import assetRoutes from './modules/assets/routes.js';
 import authRoutes from './modules/auth/routes.js';
 import kdsStreamRoutes from './modules/orders/kds.routes.js';
 import paymentWebhookRoutes from './modules/payments/routes.js';
-import billingRoutes, { billingWebhookRoutes } from './modules/billing/routes.js';
+import billingRoutes, {
+  billingWebhookRoutes,
+  setupFeeWebhookRoutes,
+} from './modules/billing/routes.js';
 import { iniciarTareas } from './modules/billing/tareas.js';
 import { cerrarBusKds, kdsBus } from './modules/orders/kds.js';
 import publicRoutes from './modules/menu/routes.js';
@@ -117,6 +120,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   // El cobro del abono al restaurante, que no es lo mismo que el cobro de un
   // pedido al comensal: distinto webhook, distinto ciclo de vida.
   await app.register(billingWebhookRoutes, { prefix: '/api/billing' });
+  // El cobro unico de configuracion inicial: endpoint propio porque no es un
+  // pedido y el webhook de pedidos no encontraria nada que mover.
+  await app.register(setupFeeWebhookRoutes, { prefix: '/api/billing' });
 
   // --- stream del KDS ------------------------------------------------------
   // Fuera del grupo anterior: se autentica con su propio ticket de 60 s.

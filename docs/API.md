@@ -144,6 +144,15 @@ navegador. Si no se cobra: 7 días de gracia en los que no cambia nada, y
 después el local vuelve al plan gratuito —la carta y el visor 3D del comensal
 siguen en pie. Ver [PAYMENTS.md](PAYMENTS.md).
 
+### Configuración inicial
+
+```
+POST /subscription/setup-fee      → { checkoutUrl, montoCents }   solo OWNER
+```
+
+Cobro único. El importe se verifica contra la pasarela antes de marcarlo como
+pagado. Ver [PAYMENTS.md](PAYMENTS.md).
+
 ### Local, marca y plan
 
 ```

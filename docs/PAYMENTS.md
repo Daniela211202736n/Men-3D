@@ -228,6 +228,33 @@ La firma se verifica con el mismo código que el webhook de pedidos. Sin
 ciegas: un aviso de "cobró" sin verificar es un plan regalado a quien sepa la
 URL.
 
+## La configuración inicial
+
+Es el otro pedazo del modelo: un cobro **único**, más grande que el abono
+(cubre la carga de la carta y el modelado 3D de los primeros platos).
+
+```
+POST /api/admin/subscription/setup-fee   → { checkoutUrl }   solo OWNER
+POST /api/billing/webhook/mercadopago/setup
+```
+
+No es una suscripción sino un pago suelto, así que va por Checkout Pro
+(`Preference`), no por `preapproval`. Y **no es un pedido**, así que no puede
+entrar por el webhook de pedidos: ese busca un `Order` por la referencia
+externa y no encontraría nada. Por eso tiene notificación propia, y la
+referencia lleva el prefijo `setup:` para que los dos caminos no se confundan.
+
+**El importe se verifica contra la pasarela.** Es lo que separa cobrar de
+regalar: sin esa comprobación, cualquiera que supiera armar un pago de un peso
+con nuestra referencia externa se llevaría la configuración gratis. La
+notificación solo trae un id; el monto y el estado salen de consultar el cobro.
+Pagar de más sí se acepta —propina o redondeo de la pasarela no son motivo para
+negarle el servicio a alguien que pagó.
+
+Como siempre: lo marca como pagado el aviso de la pasarela, nunca la vuelta del
+navegador. La pantalla lo dice en lugar de dejar al dueño preguntándose si
+funcionó.
+
 ## Lo que falta probar
 
 El diálogo con MercadoPago necesita una cuenta real. Lo verificado es la

@@ -17,6 +17,11 @@ import {
   verifySignature,
 } from '../payments/mercadopago.js';
 import {
+  aplicarCobroDeSetup,
+  consultarCobro,
+  crearCobroDeSetup,
+} from './setup-fee.js';
+import {
   cancelarEnLaPasarela,
   cobroEntro,
   consultarSuscripcion,
@@ -111,6 +116,46 @@ export default async function billingRoutes(app: FastifyInstance): Promise<void>
       });
 
       return { initPoint, providerRef };
+    },
+  );
+
+  /**
+   * Arranca el cobro de la configuracion inicial.
+   *
+   * Igual que el abono: devuelve a donde pagar, y lo que marca el cobro como
+   * hecho es el aviso de la pasarela, nunca la vuelta del navegador.
+   */
+  app.post(
+    '/subscription/setup-fee',
+    { preHandler: [app.requireRole('OWNER')] },
+    async (request) => {
+      const { tenantId, email } = request.authUser!;
+
+      const sub = await prisma.subscription.findUnique({
+        where: { tenantId },
+        include: { plan: true, tenant: { select: { name: true, currency: true } } },
+      });
+      if (!sub) throw notFound('Suscripcion');
+      if (sub.setupFeePaid) {
+        throw conflict('La configuracion inicial ya esta paga.');
+      }
+      if (sub.plan.setupFeeCents <= 0) {
+        throw badRequest(
+          'Tu plan no tiene cobro de configuracion inicial.',
+          'SIN_SETUP_FEE',
+        );
+      }
+
+      const { checkoutUrl } = await crearCobroDeSetup({
+        tenantId,
+        nombreDelLocal: sub.tenant.name,
+        emailDelDueño: email,
+        montoCents: sub.plan.setupFeeCents,
+        moneda: sub.tenant.currency,
+        urlDeVuelta: new URL('/admin/plan', env.PUBLIC_WEB_URL).toString(),
+      });
+
+      return { checkoutUrl, montoCents: sub.plan.setupFeeCents };
     },
   );
 
@@ -251,6 +296,75 @@ export async function billingWebhookRoutes(app: FastifyInstance): Promise<void> 
     }
     invalidateTenantFeatures(sub.tenantId);
     return reply.status(200).send({ received: true, applied: true });
+  });
+}
+
+/**
+ * Aviso del cobro de la configuracion inicial.
+ *
+ * Endpoint propio y no el de pedidos: aquel busca un `Order` por la referencia
+ * externa y este cobro no es un pedido, asi que ahi no encontraria nada.
+ */
+export async function setupFeeWebhookRoutes(app: FastifyInstance): Promise<void> {
+  await app.register(rateLimit, { max: 120, timeWindow: '1 minute' });
+
+  app.post('/webhook/mercadopago/setup', async (request, reply) => {
+    const peticion = {
+      body: request.body,
+      headers: request.headers as Record<string, string | string[] | undefined>,
+      query: request.query as Record<string, string | string[] | undefined>,
+    };
+    const tipo = extractNotificationType(peticion);
+    const dataId = extractDataId(peticion);
+
+    // Solo los cobros mueven esto.
+    if (tipo && tipo !== 'payment') {
+      return reply.status(200).send({ received: true, applied: false });
+    }
+    if (!dataId) return reply.status(200).send({ received: true, applied: false });
+
+    if (!env.MERCADOPAGO_WEBHOOK_SECRET) {
+      request.log.error('aviso de setup sin MERCADOPAGO_WEBHOOK_SECRET');
+      return reply.status(401).send({ error: 'sin verificacion de firma configurada' });
+    }
+    const firma = verifySignature({
+      signatureHeader: request.headers['x-signature'] as string | undefined,
+      requestId: request.headers['x-request-id'] as string | undefined,
+      dataId,
+      secret: env.MERCADOPAGO_WEBHOOK_SECRET,
+    });
+    if (!firma.valid) {
+      request.log.warn({ motivo: firma.reason }, 'aviso de setup con firma invalida');
+      return reply.status(401).send({ error: firma.reason });
+    }
+
+    // Idempotencia antes de tocar nada: MercadoPago reintenta.
+    const { esNuevo } = await registrarAviso({
+      provider: 'mercadopago',
+      eventId: `setup-${dataId}`,
+      type: 'setup_fee',
+      payload: request.body,
+    });
+    if (!esNuevo) {
+      return reply.status(200).send({ received: true, applied: false, repetido: true });
+    }
+
+    const cobro = await consultarCobro(dataId);
+    if (!cobro) return reply.status(200).send({ received: true, applied: false });
+
+    const resultado = await aplicarCobroDeSetup(cobro);
+    if (!resultado.aplicado) {
+      // No es un error nuestro ni de la pasarela: el cobro llego pero no
+      // corresponde. Se registra con el motivo y se reconoce, para que
+      // MercadoPago no insista durante horas.
+      request.log.warn(
+        { motivo: resultado.motivo, tenantId: cobro.tenantId, montoCents: cobro.montoCents },
+        'cobro de setup no aplicado',
+      );
+      return reply.status(200).send({ received: true, applied: false, motivo: resultado.motivo });
+    }
+
+    return reply.status(200).send({ received: true, applied: true, yaEstaba: resultado.yaEstaba });
   });
 }
 

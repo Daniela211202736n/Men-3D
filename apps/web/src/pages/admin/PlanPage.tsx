@@ -71,6 +71,7 @@ export function PlanPage(): ReactNode {
             {data.setupFeePaid && <span className="badge badge-good">pagado</span>}
           </span>
         </div>
+        {!data.setupFeePaid && data.setupFeeCents > 0 && <CobrarSetup />}
         <p className="tiny muted">
           La configuracion inicial cubre la carga de la carta y el modelado 3D de los
           primeros platos.
@@ -332,5 +333,53 @@ function AvisoDeCobro({
         </button>
       )}
     </section>
+  );
+}
+
+/**
+ * Boton para pagar la configuracion inicial.
+ *
+ * Solo aparece si falta pagarla. Lo que la marca como paga es el aviso de la
+ * pasarela, no esta vuelta: por eso la pantalla no cambia sola al volver, y se
+ * avisa que puede tardar un momento en vez de dejar al dueño preguntandose si
+ * funciono.
+ */
+function CobrarSetup(): ReactNode {
+  const toast = useToast();
+  const { user } = useAuth();
+  const [yendo, setYendo] = useState(false);
+
+  if (user?.role !== 'OWNER') return null;
+
+  return (
+    <div className="stack stack-2">
+      <button
+        type="button"
+        className="btn btn-primary"
+        disabled={yendo}
+        onClick={() => {
+          if (yendo) return;
+          setYendo(true);
+          void adminApi
+            .startSetupFee()
+            .then(({ checkoutUrl }) => {
+              window.location.href = checkoutUrl;
+            })
+            .catch((caught: unknown) => {
+              toast.show(
+                caught instanceof ApiError ? caught.message : 'No pudimos iniciar el cobro',
+                'error',
+              );
+              setYendo(false);
+            });
+        }}
+      >
+        {yendo ? 'Abriendo...' : 'Pagar la configuracion inicial'}
+      </button>
+      <p className="tiny muted" style={{ margin: 0 }}>
+        Al volver puede tardar unos segundos en figurar como pagada: lo
+        confirmamos con la pasarela, no con tu navegador.
+      </p>
+    </div>
   );
 }

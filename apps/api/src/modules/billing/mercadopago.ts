@@ -33,7 +33,7 @@ export interface AltaDeSuscripcion {
 
 let cliente: MercadoPagoConfig | null = null;
 
-function getCliente(): MercadoPagoConfig {
+export function getClienteMercadoPago(): MercadoPagoConfig {
   if (!env.MERCADOPAGO_ACCESS_TOKEN) {
     throw new AppError(
       503,
@@ -68,7 +68,7 @@ export async function crearSuscripcion(input: {
   moneda: string;
   urlDeVuelta: string;
 }): Promise<AltaDeSuscripcion> {
-  const preapproval = new PreApproval(getCliente());
+  const preapproval = new PreApproval(getClienteMercadoPago());
 
   let respuesta;
   try {
@@ -113,7 +113,7 @@ export async function crearSuscripcion(input: {
 
 /** Da de baja la suscripcion en la pasarela. */
 export async function cancelarEnLaPasarela(providerRef: string): Promise<void> {
-  const preapproval = new PreApproval(getCliente());
+  const preapproval = new PreApproval(getClienteMercadoPago());
   try {
     await preapproval.update({
       id: providerRef,
@@ -133,7 +133,7 @@ export async function cancelarEnLaPasarela(providerRef: string): Promise<void> {
 export async function consultarSuscripcion(
   providerRef: string,
 ): Promise<{ status?: string; next_payment_date?: string } | null> {
-  const preapproval = new PreApproval(getCliente());
+  const preapproval = new PreApproval(getClienteMercadoPago());
   try {
     return (await preapproval.get({ id: providerRef })) as {
       status?: string;

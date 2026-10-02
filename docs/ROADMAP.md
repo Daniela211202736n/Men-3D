@@ -47,9 +47,9 @@ Ordenado por lo que bloquea cobrar el primer peso.
   por alguien que sepa del marco legal de cada país donde se opere.
 - **Facturación de la suscripción: hecha.** Débito mensual con MercadoPago
   (`preapproval`), período de gracia de 7 días y degradación al plan gratuito
-  por impago —la carta del comensal nunca se apaga, ver PAYMENTS.md. Falta
-  probarla contra una cuenta real, y el cobro del *setup fee* inicial, que hoy
-  se sigue marcando a mano.
+  por impago —la carta del comensal nunca se apaga, ver PAYMENTS.md. El cobro de la configuración
+  inicial también está (Checkout Pro, webhook propio, importe verificado contra
+  la pasarela). Falta probar los dos contra una cuenta real.
 
 ## 3. Lo que sigue al producto
 

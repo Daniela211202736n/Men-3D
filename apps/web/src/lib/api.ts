@@ -319,6 +319,12 @@ export const adminApi = {
       auth: true,
     }),
 
+  startSetupFee: () =>
+    request<{ checkoutUrl: string; montoCents: number }>(
+      '/api/admin/subscription/setup-fee',
+      { method: 'POST', auth: true },
+    ),
+
   cancelSubscription: () =>
     request<{ status: string; mensaje: string }>('/api/admin/subscription', {
       method: 'DELETE',
