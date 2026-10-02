@@ -7,7 +7,7 @@ Ordenado por lo que bloquea cobrar el primer peso.
 | Tema | Estado | Qué falta |
 | --- | --- | --- |
 | **Pasarela de pagos** | **MercadoPago implementado** (Checkout Pro, webhook firmado, importe verificado, idempotente). Stripe sigue sin implementar | Probar contra una cuenta real de MercadoPago: lo verificado hasta ahora son las piezas (firma, conversión de importes, liquidación del pedido) y el recorrido del frontend con la respuesta simulada, no una transacción de punta a punta. |
-| **PostgreSQL** | **Hecho.** Migraciones versionadas, búsqueda sin tildes (`unaccent` + `pg_trgm` con índices GIN), baja de restaurantes en orden de dependencias | Búsqueda difusa por similitud (los índices de trigramas ya están puestos; falta el umbral y el orden por cercanía). |
+| **PostgreSQL** | **Hecho.** Migraciones versionadas, búsqueda sin tildes (`unaccent` + `pg_trgm` con índices GIN), baja de restaurantes en orden de dependencias | — |
 | **Modelos en CDN** | **Hecho.** Driver `s3` con subida firmada directa al bucket; `local` sigue para desarrollo | Probarlo contra un bucket real: lo verificado es el cableado contra un doble, no una integración con AWS/R2. |
 | **Imágenes y despliegue** | **Hecho.** Dockerfiles de API y PWA, compose completo, migraciones como paso aparte, CI que compila las imágenes | Elegir plataforma y publicar las imágenes en un registro. |
 | **Correo transaccional** | **Hecho.** Recuperación de contraseña y confirmación de pedido, en el idioma en que pidió el comensal. Driver `log` para desarrollo, Resend para producción | Probar Resend con un dominio verificado. |

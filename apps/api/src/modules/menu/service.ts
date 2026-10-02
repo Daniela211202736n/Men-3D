@@ -128,6 +128,94 @@ async function buscarIdsDePlatos(tenantId: string, q: string): Promise<string[]>
   return filas.map((f) => f.id);
 }
 
+/**
+ * Umbral de parecido para aceptar un plato como "quiso escribir esto".
+ *
+ * Medido contra la carta de ejemplo con `word_similarity`, que es lo que
+ * corresponde aca: `similarity` compara las cadenas enteras, asi que "milanesa"
+ * contra "Milanesa napolitana con papas" saca 0.30 —apenas mas que un error de
+ * tipeo— y obligaria a un umbral tan bajo que entraria cualquier cosa.
+ * `word_similarity` mide contra la palabra que mejor pega dentro del nombre,
+ * que es como escribe el comensal: una palabra, no la frase entera.
+ *
+ * Con eso, lo medido separa limpio:
+ *
+ *   milanessa → Milanesa      0.727     errores de tipeo reales
+ *   provleta  → Provoleta     0.583
+ *   ───────────────────────── 0.5 ─────────────────────────
+ *   pizza     → Provoleta     0.167     parecidos que no son
+ *   sushi     → Milanesa      0.000
+ */
+const PARECIDO_MINIMO = 0.5;
+
+/**
+ * Largo minimo para intentar por parecido.
+ *
+ * Con tres letras el trigrama es puro ruido: "ana" —un pedazo sin sentido de
+ * "napolitana"— saca exactamente 0.5 contra la milanesa, justo el umbral. Con
+ * cuatro, lo medido vuelve a separar.
+ */
+const LARGO_MINIMO_PARA_PARECIDO = 4;
+
+/**
+ * Platos que se *parecen* a lo buscado, del mas parecido al menos.
+ *
+ * Solo corre si la busqueda exacta no encontro nada: quien escribe bien tiene
+ * que ver el orden que eligio el restaurante —destacados primero—, no un orden
+ * por parecido que no le aporta nada. Esto es para cuando el comensal, si no,
+ * se quedaria mirando una pantalla vacia.
+ */
+async function buscarPorParecido(tenantId: string, q: string): Promise<string[]> {
+  const filas = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT d."id", MAX(
+      GREATEST(
+        word_similarity(men3d_unaccent(${q}), men3d_unaccent(d."name")),
+        word_similarity(men3d_unaccent(${q}), men3d_unaccent(COALESCE(d."description", ''))),
+        word_similarity(men3d_unaccent(${q}), men3d_unaccent(COALESCE(i."name", ''))),
+        word_similarity(men3d_unaccent(${q}), men3d_unaccent(COALESCE(t."name", '')))
+      )
+    ) AS parecido
+    FROM "Dish" d
+    LEFT JOIN "DishIngredient" i ON i."dishId" = d."id"
+    LEFT JOIN "DishTranslation" t ON t."dishId" = d."id"
+    WHERE d."tenantId" = ${tenantId}
+    GROUP BY d."id"
+    HAVING MAX(
+      GREATEST(
+        word_similarity(men3d_unaccent(${q}), men3d_unaccent(d."name")),
+        word_similarity(men3d_unaccent(${q}), men3d_unaccent(COALESCE(d."description", ''))),
+        word_similarity(men3d_unaccent(${q}), men3d_unaccent(COALESCE(i."name", ''))),
+        word_similarity(men3d_unaccent(${q}), men3d_unaccent(COALESCE(t."name", '')))
+      )
+    ) >= ${PARECIDO_MINIMO}
+    ORDER BY parecido DESC
+    LIMIT 10`;
+  return filas.map((f) => f.id);
+}
+
+export interface Coincidencias {
+  ids: string[];
+  /** Si vinieron por parecido, el orden es por cercania y hay que respetarlo. */
+  porParecido: boolean;
+}
+
+/**
+ * Busca primero exacto y, si no hay nada, por parecido.
+ *
+ * El orden importa: la busqueda exacta no se toca, asi quien escribe bien ve
+ * lo de siempre. El parecido es la red para que nadie se quede con la pantalla
+ * en blanco por una letra de mas.
+ */
+export async function buscarPlatos(tenantId: string, q: string): Promise<Coincidencias> {
+  const exactos = await buscarIdsDePlatos(tenantId, q);
+  if (exactos.length > 0) return { ids: exactos, porParecido: false };
+
+  if (q.trim().length < LARGO_MINIMO_PARA_PARECIDO) {
+    return { ids: [], porParecido: false };
+  }
+  return { ids: await buscarPorParecido(tenantId, q.trim()), porParecido: true };
+}
+
 export function buildDishWhere(
   tenantId: string,
   query: MenuQuery,
@@ -183,9 +271,8 @@ export async function getMenu(
     : DEFAULT_LOCALE;
 
   // Solo cuando hay texto: sin busqueda no hay por que pagar una consulta mas.
-  const idsDeBusqueda = query.q
-    ? await buscarIdsDePlatos(tenant.id, query.q)
-    : undefined;
+  const coincidencias = query.q ? await buscarPlatos(tenant.id, query.q) : null;
+  const idsDeBusqueda = coincidencias?.ids;
 
   const [categories, dishes, ratings, venueRating] = await Promise.all([
     prisma.category.findMany({
@@ -206,6 +293,17 @@ export async function getMenu(
     loadDishRatings(tenant.id),
     loadVenueRating(tenant.id),
   ]);
+
+  // Prisma ordena por destacados y por la posicion que eligio el dueño, que es
+  // lo correcto casi siempre. Pero cuando los platos vinieron por parecido, ese
+  // orden tapa lo unico que importa: cual se parece mas a lo que quiso
+  // escribir. Ahi se respeta el orden en que los devolvio la consulta.
+  if (coincidencias?.porParecido) {
+    const cercania = new Map(coincidencias.ids.map((id, i) => [id, i]));
+    dishes.sort(
+      (a, b) => (cercania.get(a.id) ?? Infinity) - (cercania.get(b.id) ?? Infinity),
+    );
+  }
 
   const dishesByCategory = new Map<string, number>();
   for (const dish of dishes) {

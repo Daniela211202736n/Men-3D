@@ -41,6 +41,40 @@ Hay índices GIN de trigramas (`pg_trgm`) sobre esa expresión en el nombre y la
 descripción del plato, en los ingredientes y en las traducciones. Sin ellos, un
 `LIKE '%texto%'` recorre la tabla entera.
 
+### Si no encuentra nada, busca por parecido
+
+Un comensal escribe rápido en el celular y se come una letra. Sin tolerancia a
+eso se queda mirando "no encontramos nada" y concluye que el plato no está.
+
+La búsqueda por parecido **solo corre si la exacta no devolvió nada**. Quien
+escribe bien ve el orden que eligió el restaurante —destacados primero—, no un
+orden por cercanía que no le aporta nada.
+
+Usa `word_similarity` y no `similarity`, y la diferencia no es un detalle:
+`similarity` compara las cadenas enteras, así que "milanesa" contra "Milanesa
+napolitana con papas" saca 0.30 —apenas más que un error de tipeo— y obligaría
+a un umbral tan bajo que entraría cualquier cosa. `word_similarity` mide contra
+la palabra que mejor pega dentro del nombre, que es como escribe el comensal:
+una palabra, no la frase entera.
+
+El umbral de **0.5** y el mínimo de **4 caracteres** están medidos contra la
+carta, no elegidos a ojo:
+
+| Escrito | Plato | `word_similarity` |
+| --- | --- | --- |
+| `milanessa` | Milanesa napolitana | 0.727 |
+| `provleta` | Provoleta a la parrilla | 0.583 |
+| — **umbral 0.5** — | | |
+| `pizza` | Provoleta a la parrilla | 0.167 |
+| `sushi` | Milanesa napolitana | 0.000 |
+
+Con tres letras el trigrama es ruido: `ana` —un pedazo sin sentido de
+"napolitana"— da exactamente 0.5 contra la milanesa, justo el umbral. Con
+cuatro vuelve a separar, y por eso ese es el mínimo.
+
+Cuando los platos vienen por parecido se respeta el orden de la consulta (del
+más parecido al menos), que ahí es lo único que importa.
+
 La búsqueda devuelve ids y los filtros restantes los sigue armando Prisma
 (dietas, alérgenos, categoría, archivados). Son dos consultas en vez de una,
 pero evita duplicar en SQL reglas que ya están expresadas una sola vez.

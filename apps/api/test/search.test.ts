@@ -149,3 +149,51 @@ describe('busqueda de la carta', () => {
     assert.deepEqual(await buscar('sushi'), []);
   });
 });
+
+describe('busqueda tolerante a errores de tipeo', () => {
+  it('una letra de mas igual encuentra', async () => {
+    // El caso que motiva todo: el comensal escribe rapido en el celular y se
+    // queda mirando una pantalla vacia.
+    assert.deepEqual(await buscar('cafee'), ['Café cortado']);
+    assert.deepEqual(await buscar('miilanesa'), ['Milanesa napolitana']);
+  });
+
+  it('una letra de menos tambien', async () => {
+    assert.deepEqual(await buscar('milanesa'.replace('n', '')), ['Milanesa napolitana']);
+    assert.deepEqual(await buscar('napolitna'), ['Milanesa napolitana']);
+  });
+
+  it('una letra cambiada tambien', async () => {
+    assert.deepEqual(await buscar('milaneza'), ['Milanesa napolitana']);
+  });
+
+  it('lo que no se parece a nada sigue sin aparecer', async () => {
+    // Si el parecido fuera demasiado permisivo, cualquier cosa traeria la
+    // carta entera y la busqueda dejaria de servir.
+    assert.deepEqual(await buscar('sushi'), []);
+    assert.deepEqual(await buscar('hamburguesa'), []);
+    assert.deepEqual(await buscar('zzzzzz'), []);
+  });
+
+  it('con menos de cuatro letras no se adivina', async () => {
+    // Con tres letras el trigrama es ruido: "ana" —un pedazo sin sentido de
+    // "napolitana"— da justo el umbral. Mejor no traer nada que traer
+    // cualquier cosa.
+    assert.deepEqual(await buscar('xyz'), []);
+    assert.deepEqual(await buscar('zzz'), []);
+  });
+
+  it('el parecido NO se mete cuando la busqueda exacta encuentra', async () => {
+    // Quien escribe bien tiene que ver el orden que eligio el restaurante, no
+    // un orden por parecido que no le aporta nada.
+    const exacto = await buscar('milanesa');
+    assert.deepEqual(exacto, ['Milanesa napolitana'], 'el parecido ensucio una busqueda exacta');
+  });
+
+  it('ordena del mas parecido al menos', async () => {
+    // "noqis" se parece mas a "Ñoquis" que a cualquier otra cosa.
+    const r = await buscar('noqis');
+    assert.ok(r.length > 0, 'no encontro nada');
+    assert.equal(r[0], 'Ñoquis del 29', `el primero fue ${r[0]}`);
+  });
+});

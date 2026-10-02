@@ -58,6 +58,20 @@ test.describe('el comensal', () => {
     await expect(page.getByText(PLATO)).toBeHidden();
   });
 
+  test('un error de tipeo no deja la pantalla vacia', async ({ page }) => {
+    // Es lo que pasa de verdad: se escribe rapido en el celular y se come una
+    // letra. Sin esto, el comensal se queda mirando "no encontramos nada" y
+    // concluye que el plato no esta.
+    await escanearElQr(page);
+    const buscador = page.locator('.search-bar input').first();
+
+    await buscador.fill('milanesa');
+    await expect(page.getByText(PLATO)).toBeVisible();
+
+    await buscador.fill('milanessa');
+    await expect(page.getByText(PLATO), 'un error de tipeo vacio la carta').toBeVisible();
+  });
+
   test('ve el plato en 3D', async ({ page }) => {
     await escanearElQr(page);
     await abrirPlato(page, PLATO);
