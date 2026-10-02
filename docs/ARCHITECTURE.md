@@ -121,6 +121,28 @@ que ningún menú de papel puede dar. En los datos de demostración el flan tien
 Hoy los informes agregan en memoria sobre el rango pedido, lo que rinde de sobra
 para un restaurante. A partir de ~1 millón de eventos por tenant conviene:
 
+**Lo medido, con un año de un local activo (654.000 eventos):**
+
+| rango | agregando en Node | agregando en SQL |
+| --- | --- | --- |
+| 30 días | 0,70 s | 0,14 s |
+| 90 días | 2,23 s | 0,41 s |
+| 365 días | **12,72 s** | **1,50 s** |
+
+El informe agregaba en memoria. No es que agregar en memoria sea lento: es que
+mandar 654.000 filas por el cable para contarlas lo es. Ahora agrega en SQL
+(`modules/analytics/agregados.ts`) y la pantalla anual pasó de inservible a
+usable.
+
+**Por eso no hay tabla de rollup.** Era el paso que proponía este documento, y
+medir mostró que resolvía el problema equivocado: un rollup agrega una tabla, un
+job nocturno, datos que se quedan viejos y una recarga histórica que mantener;
+un `GROUP BY` da el mismo resultado hoy, sin nada de eso. Sigue siendo el paso
+siguiente, pero recién cuando el `GROUP BY` deje de alcanzar — y ahora hay con
+qué medir cuándo pasa eso.
+
+Si llega ese momento, el camino es el mismo de siempre:
+
 1. Tabla de rollup diario (`tenantId`, `date`, `dishId`, `type`, `count`,
    `durationSum`) escrita por un job nocturno; los informes leen de ahí.
 2. Particionar `AnalyticsEvent` por mes en PostgreSQL y archivar lo viejo.

@@ -13,6 +13,7 @@ import { Allergen, DietTag, type DishDto } from '@men3d/shared';
 import { DishViewer3D } from '../../components/DishViewer3D.js';
 import { ErrorState, Spinner } from '../../components/ui.js';
 import { ApiError, adminApi, uploadAsset } from '../../lib/api.js';
+import { comprimirGlb } from '../../lib/comprimir-glb.js';
 import { allergenLabel, dietLabel } from '../../lib/i18n.js';
 import { useAsync } from '../../lib/useAsync.js';
 import { useToast } from '../../store/toast.js';
@@ -118,13 +119,27 @@ export function DishEditorPage(): ReactNode {
   const upload = async (file: File, field: 'modelGlbUrl' | 'modelUsdzUrl' | 'imageUrl') => {
     setUploading(true);
     try {
-      const { url, bytes } = await uploadAsset(file);
+      // El GLB lo descarga el celular del comensal, muchas veces con 4G: se
+      // comprime antes de subirlo. Si no mejora, sube el original.
+      let aSubir = file;
+      let ahorro: string | null = null;
+      if (field === 'modelGlbUrl') {
+        toast.show('Optimizando el modelo...');
+        const r = await comprimirGlb(file);
+        aSubir = r.archivo;
+        if (r.comprimido) {
+          const porcentaje = Math.round((1 - r.bytesDespues / r.bytesAntes) * 100);
+          ahorro = `${porcentaje}% mas liviano`;
+        }
+      }
+
+      const { url, bytes } = await uploadAsset(aSubir);
       update({ [field]: url } as Partial<FormState>);
       const mb = bytes / (1024 * 1024);
       toast.show(
         mb > 3
-          ? `Subido (${mb.toFixed(1)} MB). Conviene optimizarlo: arriba de 3 MB la carta tarda en el celular.`
-          : `Subido (${mb.toFixed(2)} MB)`,
+          ? `Subido (${mb.toFixed(1)} MB${ahorro ? `, ${ahorro}` : ''}). Sigue pesado: arriba de 3 MB la carta tarda en el celular.`
+          : `Subido (${mb.toFixed(2)} MB${ahorro ? `, ${ahorro}` : ''})`,
       );
     } catch (caught) {
       toast.show(caught instanceof ApiError ? caught.message : 'Fallo la subida', 'error');

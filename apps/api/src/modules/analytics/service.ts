@@ -17,6 +17,12 @@ import {
 } from '@men3d/shared';
 
 import { prisma } from '../../prisma.js';
+import {
+  busquedas,
+  contarPorTipo,
+  porPlato,
+  vistas3dPorDia,
+} from './agregados.js';
 
 /** Inserta un lote de eventos. Los platos inexistentes se guardan sin dishId. */
 export async function ingestEvents(
@@ -70,19 +76,14 @@ export async function getDashboard(
 ): Promise<AnalyticsDashboardDto> {
   const since = startOfRange(days);
 
-  const [events, orders, orderItems] = await Promise.all([
-    prisma.analyticsEvent.findMany({
-      where: { tenantId, createdAt: { gte: since } },
-      select: {
-        type: true,
-        dishId: true,
-        sessionId: true,
-        durationMs: true,
-        query: true,
-        value: true,
-        createdAt: true,
-      },
-    }),
+  // Los eventos se agregan en la base, no en Node: ver `agregados.ts` para los
+  // numeros que lo justifican. Los pedidos si se traen enteros —son ordenes de
+  // magnitud menos filas que los eventos y hacen falta fila por fila.
+  const [porTipo, vistasPorDia, platos, terminos, orders, orderItems] = await Promise.all([
+    contarPorTipo(tenantId, since),
+    vistas3dPorDia(tenantId, since),
+    porPlato(tenantId, since),
+    busquedas(tenantId, since),
     prisma.order.findMany({
       where: {
         tenantId,
@@ -109,17 +110,9 @@ export async function getDashboard(
   ]);
 
   // ---------------------------------------------------------------- totales
-  const sessionsByStage = new Map<string, Set<string>>();
-  const countsByType = new Map<string, number>();
-  const allSessions = new Set<string>();
-
-  for (const event of events) {
-    countsByType.set(event.type, (countsByType.get(event.type) ?? 0) + 1);
-    allSessions.add(event.sessionId);
-    const stage = sessionsByStage.get(event.type) ?? new Set<string>();
-    stage.add(event.sessionId);
-    sessionsByStage.set(event.type, stage);
-  }
+  const countsByType = new Map(porTipo.filas.map((f) => [f.type, f.eventos]));
+  const sesionesPorEtapa = new Map(porTipo.filas.map((f) => [f.type, f.sesiones]));
+  const sesionesTotales = porTipo.sesionesTotales;
 
   const revenueCents = orders.reduce((acc, o) => acc + o.totalCents, 0);
   const orderCount = orders.length;
@@ -128,16 +121,16 @@ export async function getDashboard(
 
   const totals = {
     menuOpens: countsByType.get(AnalyticsEvent.MENU_OPEN) ?? 0,
-    uniqueSessions: allSessions.size,
+    uniqueSessions: sesionesTotales,
     views3d,
     arLaunches: countsByType.get(AnalyticsEvent.AR_LAUNCH) ?? 0,
     addToCarts: countsByType.get(AnalyticsEvent.ADD_TO_CART) ?? 0,
     orders: orderCount,
     revenueCents,
     conversionRate:
-      allSessions.size === 0
+      sesionesTotales === 0
         ? 0
-        : Math.round((orderCount / allSessions.size) * 1000) / 10,
+        : Math.round((orderCount / sesionesTotales) * 1000) / 10,
     view3dRate:
       dishOpens === 0 ? 0 : Math.round((views3d / dishOpens) * 1000) / 10,
   };
@@ -154,10 +147,9 @@ export async function getDashboard(
       revenueCents: 0,
     });
   }
-  for (const event of events) {
-    if (event.type !== AnalyticsEvent.DISH_VIEW_3D) continue;
-    const point = timeseriesMap.get(isoDay(event.createdAt));
-    if (point) point.views3d += 1;
+  for (const [dia, vistas] of vistasPorDia) {
+    const point = timeseriesMap.get(dia);
+    if (point) point.views3d = vistas;
   }
   for (const order of orders) {
     const point = timeseriesMap.get(isoDay(order.createdAt));
@@ -176,46 +168,19 @@ export async function getDashboard(
     viewMsTotal: number;
     viewMsSamples: number;
   }
-  const perDish = new Map<string, Acc>();
-  const touch = (dishId: string): Acc => {
-    const acc =
-      perDish.get(dishId) ??
-      ({
-        views3d: 0,
-        rotations: 0,
-        arLaunches: 0,
-        addToCarts: 0,
-        viewMsTotal: 0,
-        viewMsSamples: 0,
-      } satisfies Acc);
-    perDish.set(dishId, acc);
-    return acc;
-  };
-
-  for (const event of events) {
-    if (!event.dishId) continue;
-    const acc = touch(event.dishId);
-    switch (event.type) {
-      case AnalyticsEvent.DISH_VIEW_3D:
-        acc.views3d += 1;
-        if (event.durationMs && event.durationMs > 0) {
-          acc.viewMsTotal += event.durationMs;
-          acc.viewMsSamples += 1;
-        }
-        break;
-      case AnalyticsEvent.DISH_ROTATE:
-        acc.rotations += 1;
-        break;
-      case AnalyticsEvent.AR_LAUNCH:
-        acc.arLaunches += 1;
-        break;
-      case AnalyticsEvent.ADD_TO_CART:
-        acc.addToCarts += 1;
-        break;
-      default:
-        break;
-    }
-  }
+  const perDish = new Map<string, Acc>(
+    platos.map((p) => [
+      p.dishId,
+      {
+        views3d: p.views3d,
+        rotations: p.rotations,
+        arLaunches: p.arLaunches,
+        addToCarts: p.addToCarts,
+        viewMsTotal: p.viewMsTotal,
+        viewMsSamples: p.viewMsSamples,
+      } satisfies Acc,
+    ]),
+  );
 
   const salesByDish = new Map<string, { units: number; revenue: number; name: string }>();
   for (const item of orderItems) {
@@ -272,9 +237,9 @@ export async function getDashboard(
     'ADD_TO_CART',
     'PURCHASE',
   ];
-  const topSessions = sessionsByStage.get('MENU_OPEN')?.size ?? 0;
+  const topSessions = sesionesPorEtapa.get('MENU_OPEN') ?? 0;
   const funnel: FunnelStageDto[] = funnelStages.map((stage) => {
-    const sessions = sessionsByStage.get(stage)?.size ?? 0;
+    const sessions = sesionesPorEtapa.get(stage) ?? 0;
     return {
       stage,
       sessions,
@@ -283,19 +248,6 @@ export async function getDashboard(
     };
   });
 
-  // ------------------------------------------------------------- busquedas
-  const searchMap = new Map<string, SearchTermRowDto>();
-  for (const event of events) {
-    if (event.type !== AnalyticsEvent.SEARCH || !event.query) continue;
-    const term = event.query.trim().toLowerCase();
-    if (!term) continue;
-    const row = searchMap.get(term) ?? { term, searches: 0, zeroResults: 0 };
-    row.searches += 1;
-    // `value` lleva la cantidad de resultados: 0 = hueco de carta o sinonimo
-    // que no contemplamos ("hamburguesa" cuando en la carta dice "burger").
-    if (event.value === 0) row.zeroResults += 1;
-    searchMap.set(term, row);
-  }
 
   return {
     rangeDays: days,
@@ -304,8 +256,7 @@ export async function getDashboard(
     timeseries: [...timeseriesMap.values()],
     topDishes,
     funnel,
-    topSearches: [...searchMap.values()]
-      .sort((a, b) => b.searches - a.searches)
-      .slice(0, 15),
+    // Ya vienen contadas y ordenadas por la base, con su limite aplicado.
+    topSearches: terminos satisfies SearchTermRowDto[],
   };
 }

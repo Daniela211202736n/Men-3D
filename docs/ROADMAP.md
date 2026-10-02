@@ -53,9 +53,15 @@ Ordenado por lo que bloquea cobrar el primer peso.
 
 ## 3. Lo que sigue al producto
 
-- **Optimización de modelos en el servidor**: comprimir con Draco al subir, para
-  no depender de que el restaurante suba un GLB liviano.
-- **Rollups de analítica** (ver ARCHITECTURE.md §6).
+- **Optimización de modelos: hecha**, pero en el navegador y no en el servidor.
+  Con `STORAGE_DRIVER=s3` el GLB viaja directo al bucket con una URL firmada y
+  la API nunca ve los bytes: comprimir del lado del servidor obligaría a
+  deshacer esa decisión. Se comprime con Draco en el backoffice antes de subir
+  —entre 74% y 82% más liviano en los modelos de ejemplo— y si no mejora, se
+  sube el original.
+- **Analítica: agregada en SQL.** La tabla de rollup que proponía
+  ARCHITECTURE.md §6 resultaba resolver el problema equivocado; los números
+  están ahí.
 - **Fotogrametría asistida**: que el restaurante genere el modelo 3D desde el
   celular dando una vuelta alrededor del plato. Es lo que elimina el mayor costo
   de implantación.
