@@ -20,7 +20,7 @@ Ordenado por lo que bloquea cobrar el primer peso.
   restaurada rota en silencio. Falta agendarlo en el servidor que se elija y
   sincronizar las copias fuera de esa máquina (ver DEPLOY.md).
 
-- **Pruebas automatizadas.** Hay 135 pruebas (`npm test`): totales e IVA, canje de
+- **Pruebas automatizadas.** Hay 176 pruebas (`npm test`) más 5 de recorrido en navegador (`npm run e2e`): totales e IVA, canje de
   puntos, máquina de estados del pedido, el adaptador de MercadoPago completo,
   el almacenamiento local y S3, las de integración del camino del dinero
   (liquidación, idempotencia, importe manipulado, concurrencia), **el aislamiento
