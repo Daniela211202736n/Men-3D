@@ -64,6 +64,12 @@ jobs:
         # La API y la PWA tipan contra sus declaraciones: tiene que ir primero.
         run: npm run build -w @men3d/shared
 
+      - name: Generar el cliente de Prisma
+        # `migrate deploy` no genera el cliente: sin este paso
+        # `@prisma/client` no exporta ningun modelo y el chequeo de tipos se
+        # cae entero. No necesita la base, solo el esquema.
+        run: npm run db:generate
+
       - name: Aplicar migraciones
         run: npm run db:deploy
 
