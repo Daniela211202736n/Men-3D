@@ -67,7 +67,12 @@ Si cambiamos el precio de tu plan te avisamos con **{{PREAVISO_PRECIO}}** de
 anticipación al correo de la cuenta. Si no te sirve, podés dar de baja antes de
 que el precio nuevo entre en vigencia, sin cargo.
 
-## 5. Baja
+## 5. Baja y arrepentimiento
+
+**Si te arrepentiste de contratar**, usá el
+[botón de arrepentimiento](/arrepentimiento). No hace falta registrarse ni
+buscar ningún número: te devolvemos un código de identificación en el acto y
+también por correo, y es tu comprobante con la fecha.
 
 Podés dar de baja cuando quieras desde la pantalla de plan, o escribiendo a
 {{EMAIL_LEGAL}}. La baja corta el débito automático; el período ya pagado sigue

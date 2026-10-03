@@ -82,6 +82,19 @@ export function LandingPage(): ReactNode {
         </Link>
       </section>
 
+      {/* La Res. 424/2020 pide "acceso facil y directo desde la pagina de
+          inicio", en "lugar destacado en cuanto a visibilidad y tamaño". Por eso
+          va como boton y con el nombre exacto que usa la norma, y no como un
+          enlace chico perdido entre los otros tres de abajo. Si alguna vez se
+          rediseña la portada, esto no se puede achicar. */}
+      <Link
+        to="/arrepentimiento"
+        className="btn"
+        style={{ alignSelf: 'flex-start' }}
+      >
+        BOTÓN DE ARREPENTIMIENTO
+      </Link>
+
       {/* Los textos legales se alcanzan desde la portada, que es donde los
           busca cualquiera —y donde la normativa de comercio electronico espera
           encontrarlos. Ver docs/legal/README.md. */}

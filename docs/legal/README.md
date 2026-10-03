@@ -46,7 +46,7 @@ Mientras alguno siga vacío:
 - donde falta un dato, el texto dice **«FALTA: NOMBRE»** en lugar de inventarlo.
 
 Es deliberado: una política de privacidad a medio llenar es peor que ninguna,
-porque parece una. Hoy faltan **21** datos.
+porque parece una. Hoy faltan **22** datos.
 
 Cuando no falte ninguno, el aviso desaparece solo. Hay que acordarse de
 actualizar las dos afirmaciones del final de `e2e/legal.spec.ts`, que hoy
@@ -54,7 +54,7 @@ comprueban justamente que el aviso **está**.
 
 ---
 
-## 1. Lo que completás vos (14)
+## 1. Lo que completás vos (15)
 
 Datos y decisiones de negocio. No necesitan abogado.
 
@@ -72,6 +72,7 @@ Datos y decisiones de negocio. No necesitan abogado.
 | `PLAZO_ANALITICA` | Cuánto se conservan los eventos. El panel anual necesita 12 meses; más que eso es decisión tuya. |
 | `PLAZO_CUENTA` | Cuánto se conservan los datos de un restaurante después de la baja. |
 | `PLAZO_LOGS` | Cuánto se conservan los registros del servidor, que incluyen direcciones IP. 30 o 90 días son lo habitual. |
+| `PLAZO_REVOCACIONES` | Cuánto se conservan los pedidos del botón de arrepentimiento. Son el comprobante de un derecho ejercido: conviene que sea largo. |
 | `PREAVISO_PRECIO` | Con cuánta anticipación avisás un aumento. |
 | `PREAVISO_TERMINOS` | Con cuánta anticipación avisás un cambio de términos. |
 
@@ -122,30 +123,33 @@ Nota técnica para quien lo redacte: el encargado responde solidariamente por su
 subcontratistas. Los subcontratistas de hecho son los cinco proveedores de la
 tabla de la política de privacidad.
 
-### 3.3 Botón de arrepentimiento — **esto falta en el producto**
+### 3.3 Botón de arrepentimiento — **hecho**
 
 La **Resolución 424/2020** de la Secretaría de Comercio Interior obliga a quien
 vende bienes o servicios por web o aplicación a publicar un enlace llamado
-**BOTÓN DE ARREPENTIMIENTO**, y es específica en cómo:
+**BOTÓN DE ARREPENTIMIENTO**. Está implementado, y así se cumple cada exigencia:
 
-- **acceso directo desde la página principal**, en lugar destacado por tamaño y
-  visibilidad;
-- **no se le puede exigir al consumidor registrarse** ni hacer ningún otro
-  trámite para usarlo;
-- hay que **informarle el código de revocación dentro de las 24 horas**, por el
-  mismo medio.
+| Lo que pide la norma | Cómo se cumple |
+| --- | --- |
+| Acceso directo desde la página principal, destacado por tamaño y visibilidad | Un botón en la portada, con el nombre exacto de la norma. No es uno de los enlaces chicos del pie. |
+| No exigirle registrarse ni ningún otro trámite | No hay sesión, no hay restaurante asociado, y los únicos campos obligatorios son el nombre y el correo. Identificar la contratación es opcional: *«si no lo tenés a mano, dejalo vacío»*. |
+| Informarle el código de revocación dentro de 24 horas, por el mismo medio | Se le muestra en pantalla en el acto —mismo medio, cero horas— y además se le manda por correo. |
 
-**Hoy no existe.** No lo implementé porque no es un texto y porque tiene
-decisiones que no son mías: a qué casilla llega, quién responde en 24 horas, y
-si aplica a la venta del restaurante al comensal además de a la suscripción del
-restaurante —un plato servido en la mesa difícilmente admita revocación, y ahí
-quien vende es el local, no Men-3D—. Esa segunda pregunta es para el abogado;
-la primera, para vos.
+Vive en `/arrepentimiento`; el endpoint es `POST /api/arrepentimiento` y los
+pedidos quedan en la tabla `RevocationRequest` con su código y su fecha.
 
-Si querés, lo construyo: es una página con un formulario sin registro, un
-registro en la base con su código, y el correo automático de las 24 horas.
+**Dos cosas que hay que saber:**
 
----
+- **Definí `LEGAL_EMAIL`.** El código se le informa solo, pero *honrar* la
+  revocación —dar de baja y reintegrar— lo hace una persona. Sin esa casilla el
+  pedido queda guardado y nadie se entera. Ver [DEPLOY.md](../DEPLOY.md).
+- **Queda una pregunta para el abogado:** si esto aplica también a la venta del
+  restaurante al comensal, además de a la suscripción del restaurante. Lo
+  implementado cubre la segunda, donde Men-3D es claramente quien vende. Para la
+  primera hay dos razones para dudar —un plato servido difícilmente admita
+  revocación, y ahí quien vende es el local— pero el art. 40 de la Ley 24.240
+  mete a toda la cadena, así que la respuesta no es obvia. Si la respuesta es
+  que sí, hace falta un botón por carta y no uno en la portada.
 
 ## 4. Lo que el marco legal **no** obliga y hacemos igual
 

@@ -572,3 +572,35 @@ model QrCode {
 
   @@index([tenantId])
 }
+
+// -------------------------------------------------- BOTON DE ARREPENTIMIENTO
+
+/// Pedido de revocacion de una contratacion (Res. 424/2020 SCI).
+///
+/// No cuelga de `Tenant` a proposito: la resolucion prohibe exigirle al
+/// consumidor registrarse o hacer cualquier otro tramite para usar el boton,
+/// asi que quien lo usa puede no tener cuenta, puede no acordarse con que
+/// correo la abrio, o puede ser alguien a quien le cobraron sin haber
+/// contratado. Pedir un tenantId seria justamente el tramite que la norma no
+/// permite pedir. Lo que llega es lo que la persona quiso escribir.
+///
+/// `code` es lo que hay que informarle dentro de las 24 horas. Se le muestra en
+/// pantalla en el acto —mismo medio, dentro del plazo— y ademas se le manda por
+/// correo; `notifiedAt` registra que el correo salio.
+model RevocationRequest {
+  id        String @id @default(cuid())
+  /// Codigo de identificacion de la revocacion que se le informa al consumidor.
+  code      String @unique
+  name      String
+  email     String
+  phone     String?
+  /// Como identifica su contratacion: el correo de la cuenta, un CUIT, el
+  /// numero de operacion. Opcional: la norma no permite exigirlo.
+  reference String?
+  detail    String?
+  /// Cuando se le informo el codigo por correo. Null = solo se vio en pantalla.
+  notifiedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}

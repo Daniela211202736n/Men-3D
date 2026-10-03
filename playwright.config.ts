@@ -89,6 +89,9 @@ export default defineConfig({
         CORS_ORIGIN: WEB,
         // El recorrido hace varios logins; el limite normal es para internet.
         AUTH_RATE_LIMIT_MAX: '500',
+        // Idem el boton de arrepentimiento: manda formularios de verdad, y el
+        // contador sobrevive entre corridas si se reusa el servidor.
+        REVOCATION_RATE_LIMIT_MAX: '500',
       },
     },
     {

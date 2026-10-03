@@ -83,3 +83,41 @@ test.describe('textos legales', () => {
     await expect(page.locator('.legal-prose')).toContainText('«FALTA: RAZON_SOCIAL»');
   });
 });
+
+/**
+ * El boton de arrepentimiento.
+ *
+ * Las dos cosas que la Res. 424/2020 exige y que se pueden romper sin darse
+ * cuenta: que se llegue desde la portada en un solo clic, y que no haya que
+ * registrarse ni buscar ningun numero para usarlo.
+ */
+test.describe('boton de arrepentimiento', () => {
+  test('se llega desde la portada en un clic', async ({ page }) => {
+    await page.goto('/');
+    // Con el nombre exacto que usa la norma.
+    await page.getByRole('link', { name: 'BOTÓN DE ARREPENTIMIENTO' }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Botón de arrepentimiento' }),
+    ).toBeVisible();
+  });
+
+  test('no pide registrarse y devuelve el codigo en el acto', async ({ page }) => {
+    await page.goto('/arrepentimiento');
+
+    // Sin login: se completa y se manda. Solo los dos campos obligatorios, que
+    // es todo lo que la norma permite exigir.
+    await page.getByLabel('Tu nombre').fill('Ana Arrepentida');
+    await page.getByLabel('Tu correo').fill(`e2e-${Date.now()}@prueba.demo`);
+    await page.getByRole('button', { name: /Registrar mi arrepentimiento/ }).click();
+
+    // El codigo sale en pantalla: mismo medio, y dentro del plazo de 24 h con
+    // muchisimo margen.
+    const tarjeta = page.getByTestId('codigo-de-revocacion');
+    await expect(tarjeta).toBeVisible();
+    // Contra el <strong>, no contra la tarjeta: ahi vive el codigo solo, y asi
+    // el patron ancla de verdad en vez de contra el texto de todo el bloque.
+    await expect(tarjeta.locator('strong')).toHaveText(
+      /^ARR-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/,
+    );
+  });
+});

@@ -78,13 +78,13 @@ Resolvelas antes de desplegar, porque cambian datos que después hay que migrar.
 - **La política de privacidad y los términos.** Hay **borradores escritos y
   publicados** en `/legal/privacidad`, `/legal/terminos` y
   `/legal/terminos-comensal`, redactados contra el marco argentino (Ley 25.326,
-  Ley 24.240) y fieles a lo que el sistema hace de verdad. Lo que falta son 21
-  datos: 14 los completás vos en `apps/web/src/legal/empresa.ts` y 7 los tiene
-  que escribir un abogado, porque definen responsabilidad. Mientras falten, la
-  página lo dice en pantalla en vez de publicar un texto con agujeros.
-  **Hay además un botón de arrepentimiento obligatorio que todavía no existe en
-  el producto** (Res. 424/2020 SCI). Todo en
-  [legal/README.md](legal/README.md).
+  Ley 24.240) y fieles a lo que el sistema hace de verdad. Lo que falta son
+  datos: unos los completás vos en `apps/web/src/legal/empresa.ts` y otros los
+  tiene que escribir un abogado, porque definen responsabilidad. Mientras
+  falten, la página los lista en pantalla en vez de publicar un texto con
+  agujeros. El botón de arrepentimiento que exige la Res. 424/2020 **ya está
+  implementado**; acordate de definir `LEGAL_EMAIL` para que alguien se entere
+  de los pedidos. Todo en [legal/README.md](legal/README.md).
 
 ---
 

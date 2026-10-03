@@ -91,6 +91,7 @@ se pierden al recrearlo.
 | Variable | Valor |
 | --- | --- |
 | `AUTH_RATE_LIMIT_MAX` | Intentos de autenticación por IP cada 5 minutos (por defecto 20) |
+| `REVOCATION_RATE_LIMIT_MAX` | Pedidos del botón de arrepentimiento por IP cada 10 minutos (por defecto 5) |
 
 Cubre login, registro y recuperación de contraseña. El valor por defecto frena
 la fuerza bruta sin molestar a nadie, con una salvedad: el límite es **por IP**,
@@ -104,6 +105,15 @@ mucho personal que entra al mismo tiempo —un cambio de turno— conviene subir
 | `MAIL_DRIVER` | `resend` en producción; `log` solo en desarrollo |
 | `MAIL_FROM` | Remitente, en un dominio verificado en Resend |
 | `RESEND_API_KEY` | Clave de la API de Resend |
+| `LEGAL_EMAIL` | Casilla que recibe los pedidos del botón de arrepentimiento |
+
+**`LEGAL_EMAIL` conviene definirla.** La Res. 424/2020 obliga a informarle al
+consumidor su código de revocación dentro de las 24 horas, y eso lo hace el
+sistema solo —en pantalla y por correo—. Pero *honrar* la revocación, es decir
+dar de baja y reintegrar, lo hace una persona, y sin esta casilla nadie se
+entera de que hay un pedido esperando: queda guardado en la tabla
+`RevocationRequest` y el aviso se escribe en el log. Ver
+[legal/README.md](legal/README.md).
 
 Con `MAIL_DRIVER=log` la API no envía nada: imprime el correo entero en la
 consola. En desarrollo eso es lo cómodo —el enlace de recuperación sale listo

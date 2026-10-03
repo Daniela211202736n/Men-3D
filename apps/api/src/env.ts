@@ -63,10 +63,29 @@ const schema = z.object({
    */
   REDIS_URL: z.string().url().optional(),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
+  /**
+   * Peticiones al boton de arrepentimiento por IP cada diez minutos.
+   *
+   * Cinco le sobran a una persona que se arrepiente. Es configurable por la
+   * misma razon que el de autenticacion: el recorrido de navegador manda
+   * formularios de verdad y el contador vive en el servidor, asi que correrlo
+   * dos veces seguidas con el limite de produccion da un falso rojo.
+   */
+  REVOCATION_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   MAIL_DRIVER: z.enum(['log', 'resend']).default('log'),
   /** Remitente verificado, p. ej. "Men-3D <hola@tu-dominio.com>". */
   MAIL_FROM: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
+  /**
+   * Casilla que recibe los pedidos del boton de arrepentimiento.
+   *
+   * La Res. 424/2020 obliga a informarle al consumidor el codigo de revocacion
+   * dentro de las 24 horas, y eso lo hace el sistema solo. Pero HONRAR la
+   * revocacion —dar de baja y reintegrar— es trabajo de una persona, y sin esta
+   * casilla nadie se entera de que hay un pedido esperando. Sin definirla, el
+   * pedido queda igual guardado en la base y el aviso se escribe en el log.
+   */
+  LEGAL_EMAIL: z.string().email().optional(),
 
   // --- almacenamiento de modelos 3D e imagenes -----------------------------
   /**

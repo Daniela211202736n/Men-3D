@@ -296,3 +296,23 @@ export const translateRequestSchema = z.object({
   overwrite: z.boolean().default(false),
 });
 export type TranslateRequestInput = z.infer<typeof translateRequestSchema>;
+
+/* ------------------------------------------- boton de arrepentimiento */
+
+/**
+ * Pedido de revocacion (Res. 424/2020 SCI).
+ *
+ * Solo nombre y correo son obligatorios, y por norma: la resolucion prohibe
+ * exigirle al consumidor registrarse o hacer cualquier otro tramite para usar
+ * el boton. Pedirle el numero de operacion seria ese tramite. El correo se pide
+ * porque es por donde se le informa el codigo.
+ */
+export const revocationRequestSchema = z.object({
+  name: z.string().trim().min(2, 'decinos como te llamas').max(120),
+  email: z.string().email(),
+  phone: z.string().trim().max(40).optional(),
+  /** Como identifica su contratacion, si se acuerda. Opcional a proposito. */
+  reference: z.string().trim().max(200).optional(),
+  detail: z.string().trim().max(2000).optional(),
+});
+export type RevocationRequestInput = z.infer<typeof revocationRequestSchema>;

@@ -19,6 +19,7 @@ import type {
   PairingDto,
   PlanTier,
   ReviewDto,
+  RevocationRequestInput,
   TeamUserDto,
   VenueDto,
 } from '@men3d/shared';
@@ -244,6 +245,18 @@ export const publicApi = {
       ...(guestId ? { query: { guestId } } : {}),
       signal,
     }),
+
+  /**
+   * Boton de arrepentimiento. No cuelga de un restaurante: es la revocacion de
+   * la contratacion con la plataforma, y la Res. 424/2020 no permite exigirle
+   * al consumidor ningun tramite previo —ni registrarse, ni saber de que local
+   * se trata.
+   */
+  revocacion: (input: RevocationRequestInput, signal?: AbortSignal) =>
+    request<{ code: string; createdAt: string; mensaje: string }>(
+      '/api/arrepentimiento',
+      { method: 'POST', body: input, signal },
+    ),
 };
 
 /* --------------------------------------------------------------- backoffice */

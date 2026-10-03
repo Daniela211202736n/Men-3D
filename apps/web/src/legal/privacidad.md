@@ -92,7 +92,18 @@ Tu correo electrónico y tu nombre, la contraseña guardada como hash con bcrypt
 teléfono, redes, horarios), tu carta, y los datos de tu suscripción: plan,
 estado, períodos y los identificadores de los cobros en la pasarela.
 
-### 2.4 Registros técnicos
+### 2.4 Si usaste el botón de arrepentimiento
+
+Lo que escribiste en el formulario: tu nombre, tu correo, y si los dejaste, tu
+teléfono, la referencia de la contratación y el detalle. Más el código de
+revocación que te dimos y la fecha.
+
+No te pedimos cuenta ni registro para usarlo —no podemos, la Res. 424/2020 lo
+prohíbe—, así que eso es todo lo que tenemos de ese pedido. Se conserva
+**{{PLAZO_REVOCACIONES}}**: es el comprobante de que ejerciste un derecho, y nos
+sirve tanto a vos como a nosotros que quede.
+
+### 2.5 Registros técnicos
 
 Nuestros servidores dejan registros de operación que, como cualquier servidor
 web, incluyen la dirección IP de origen, la hora y la ruta solicitada. Sirven
@@ -146,6 +157,7 @@ transferencia internacional de datos en los términos del artículo 12 de la Ley
 | Cuenta de puntos | Mientras el restaurante tenga fidelidad activa. |
 | Analítica | {{PLAZO_ANALITICA}}, sin vínculo con ninguna persona. |
 | Cuenta del restaurante | Mientras el contrato esté vigente, y después {{PLAZO_CUENTA}}. |
+| Pedidos de revocación | {{PLAZO_REVOCACIONES}}. |
 | Registros técnicos | {{PLAZO_LOGS}}. |
 
 ---

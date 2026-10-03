@@ -50,6 +50,8 @@ export const DATOS_LEGALES: Record<string, DatoLegal> = {
   PLAZO_ANALITICA: { valor: PENDIENTE, origen: 'negocio' },
   PLAZO_CUENTA: { valor: PENDIENTE, origen: 'negocio' },
   PLAZO_LOGS: { valor: PENDIENTE, origen: 'negocio' },
+  /** Pedidos del boton de arrepentimiento: comprobante de un derecho ejercido. */
+  PLAZO_REVOCACIONES: { valor: PENDIENTE, origen: 'negocio' },
   PREAVISO_PRECIO: { valor: PENDIENTE, origen: 'negocio' },
   PREAVISO_TERMINOS: { valor: PENDIENTE, origen: 'negocio' },
 
