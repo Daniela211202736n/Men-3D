@@ -604,3 +604,43 @@ table.data tbody tr:hover { background: var(--surface-2); }
   font-size: 0.86rem; font-weight: 550; box-shadow: var(--shadow-2);
 }
 .toast.is-error { background: var(--critical); color: #fff; }
+
+/* ------------------------------------------------------- textos legales
+   Tipografia de lectura larga: la unica parte de la aplicacion donde alguien
+   lee parrafos seguidos en vez de mirar una carta. Medida de linea corta,
+   interlineado mas alto y titulos que se distinguen sin gritar. */
+.legal-prose { font-size: 0.94rem; line-height: 1.65; color: var(--text-secondary); }
+.legal-prose h1 { font-size: 1.5rem; line-height: 1.25; color: var(--text-primary); margin: 0 0 4px; }
+.legal-prose h2 {
+  font-size: 1.1rem; color: var(--text-primary);
+  margin: 32px 0 8px; padding-top: 16px; border-top: 1px solid var(--border);
+}
+.legal-prose h3 { font-size: 0.98rem; color: var(--text-primary); margin: 20px 0 6px; }
+.legal-prose p { margin: 0 0 12px; }
+.legal-prose strong { color: var(--text-primary); font-weight: 600; }
+.legal-prose ul { margin: 0 0 12px; padding-left: 20px; }
+.legal-prose li { margin-bottom: 6px; }
+.legal-prose a { color: var(--brand); }
+.legal-prose code {
+  font-size: 0.85em; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 4px;
+}
+.legal-prose blockquote {
+  margin: 0 0 12px; padding: 10px 14px;
+  border-left: 3px solid var(--border-strong); background: var(--surface-2);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.9rem;
+}
+.legal-prose blockquote p:last-child { margin-bottom: 0; }
+.legal-prose hr { border: 0; border-top: 1px solid var(--border); margin: 24px 0; }
+/* La tabla se desborda en un celular angosto: se deja desplazar sola en vez de
+   romper el ancho de la pagina. */
+.legal-prose table {
+  display: block; overflow-x: auto; width: 100%;
+  border-collapse: collapse; margin: 0 0 16px; font-size: 0.86rem;
+}
+.legal-prose th, .legal-prose td {
+  border: 1px solid var(--border); padding: 7px 10px;
+  text-align: left; vertical-align: top;
+}
+.legal-prose th { background: var(--surface-2); color: var(--text-primary); font-weight: 600; }

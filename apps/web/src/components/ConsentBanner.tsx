@@ -77,9 +77,17 @@ export function ConsentBanner({ slug }: { slug: string }): ReactNode {
         </button>
       </div>
 
-      <Link to={`/m/${slug}/privacidad`} className="tiny muted" style={{ textAlign: 'center' }}>
-        Que se guarda exactamente
-      </Link>
+      {/* Dos destinos distintos a proposito: el primero son SUS datos, con
+          botones para verlos y borrarlos; el segundo es el texto legal. Quien
+          esta por pedir la cena quiere el primero. */}
+      <span className="row tiny muted" style={{ justifyContent: 'center', gap: 12 }}>
+        <Link to={`/m/${slug}/privacidad`} className="tiny muted">
+          Que se guarda exactamente
+        </Link>
+        <Link to="/legal/privacidad" className="tiny muted">
+          Politica de privacidad
+        </Link>
+      </span>
     </div>
   );
 }

@@ -107,6 +107,7 @@ men-3d/
 | [docs/UX-FLOWS.md](docs/UX-FLOWS.md)         | Flujos de usuario principales |
 | [docs/LANZAMIENTO.md](docs/LANZAMIENTO.md)   | Puesta en marcha: en qué orden y qué tarda |
 | [docs/SEGURIDAD.md](docs/SEGURIDAD.md)       | Revisión de seguridad: hallazgos y qué se verificó |
+| [docs/legal/README.md](docs/legal/README.md) | Privacidad y términos: borradores, qué falta completar y qué debe ver un abogado |
 | [docs/API.md](docs/API.md)                   | Referencia de endpoints |
 | [docs/PAYMENTS.md](docs/PAYMENTS.md)         | Pasarelas de pago: MercadoPago, webhooks y cómo agregar otra |
 | [docs/DEPLOY.md](docs/DEPLOY.md)             | Despliegue: Docker, variables, migraciones, bucket y CDN |

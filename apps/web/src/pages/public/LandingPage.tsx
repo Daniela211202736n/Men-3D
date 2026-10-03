@@ -81,6 +81,24 @@ export function LandingPage(): ReactNode {
           Entrar al panel
         </Link>
       </section>
+
+      {/* Los textos legales se alcanzan desde la portada, que es donde los
+          busca cualquiera —y donde la normativa de comercio electronico espera
+          encontrarlos. Ver docs/legal/README.md. */}
+      <footer
+        className="row tiny muted"
+        style={{ flexWrap: 'wrap', gap: 14, borderTop: '1px solid var(--border)', paddingTop: 20 }}
+      >
+        <Link to="/legal/privacidad" className="tiny muted">
+          Politica de privacidad
+        </Link>
+        <Link to="/legal/terminos" className="tiny muted">
+          Terminos del servicio
+        </Link>
+        <Link to="/legal/terminos-comensal" className="tiny muted">
+          Terminos para el comensal
+        </Link>
+      </footer>
     </div>
   );
 }

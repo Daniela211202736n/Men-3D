@@ -2,6 +2,7 @@
  * Rutas de la aplicacion.
  *
  *   /                          portada de la plataforma
+ *   /legal/*                   privacidad y terminos
  *   /m/:slug                   carta publica (y sus subrutas)
  *   /admin/*                   backoffice del restaurante
  *
@@ -59,6 +60,11 @@ const PrivacyPage = lazy(() =>
 const TeamPage = lazy(() =>
   import('./pages/admin/TeamPage.js').then((m) => ({ default: m.TeamPage })),
 );
+// `lazy` tambien para los textos legales: son tres documentos largos y la
+// enorme mayoria de las visitas a una carta no los abre nunca.
+const LegalPage = lazy(() =>
+  import('./pages/public/LegalPage.js').then((m) => ({ default: m.LegalPage })),
+);
 const ForgotPasswordPage = lazy(() =>
   import('./pages/admin/PasswordPages.js').then((m) => ({
     default: m.ForgotPasswordPage,
@@ -74,6 +80,21 @@ export function App(): ReactNode {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+
+      {/* --- textos legales --- */}
+      <Route
+        path="/legal/privacidad"
+        element={<Lazy element={<LegalPage documento="privacidad" />} />}
+      />
+      <Route
+        path="/legal/terminos"
+        element={<Lazy element={<LegalPage documento="terminos" />} />}
+      />
+      <Route
+        path="/legal/terminos-comensal"
+        element={<Lazy element={<LegalPage documento="terminos-comensal" />} />}
+      />
+      <Route path="/legal" element={<Navigate to="/legal/privacidad" replace />} />
 
       {/* --- carta publica --- */}
       <Route path="/m/:slug" element={<MenuLayout />}>

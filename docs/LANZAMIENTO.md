@@ -69,14 +69,22 @@ modelo. Los pasos están en [DEPLOY.md § El bucket y el CDN](DEPLOY.md).
 Resolvelas antes de desplegar, porque cambian datos que después hay que migrar.
 
 - **Los precios.** Los del código son los de la demostración: $59.000 por mes y
-  $199.000 de configuración inicial. Están en la tabla `Plan` y son una decisión
-  comercial, no una constante.
+  $199.000 de configuración inicial. Se cambian en
+  `apps/api/src/modules/plans/catalogo.ts` y se aplican con `npm run db:plans`
+  (o `db:plans:prod` dentro de la imagen). Son una decisión comercial, no una
+  constante.
 - **Qué incluye cada plan.** `PLAN_FEATURES` en `packages/shared/src/enums.ts`.
 - **La moneda y el país** de cada restaurante.
-- **La política de privacidad y los términos.** El mecanismo está hecho
-  —consentimiento que corta de verdad, exportación y borrado de datos— pero el
-  texto lo tiene que escribir alguien que conozca el marco legal de donde
-  operes. Ver [UX-FLOWS.md § F](UX-FLOWS.md).
+- **La política de privacidad y los términos.** Hay **borradores escritos y
+  publicados** en `/legal/privacidad`, `/legal/terminos` y
+  `/legal/terminos-comensal`, redactados contra el marco argentino (Ley 25.326,
+  Ley 24.240) y fieles a lo que el sistema hace de verdad. Lo que falta son 21
+  datos: 14 los completás vos en `apps/web/src/legal/empresa.ts` y 7 los tiene
+  que escribir un abogado, porque definen responsabilidad. Mientras falten, la
+  página lo dice en pantalla en vez de publicar un texto con agujeros.
+  **Hay además un botón de arrepentimiento obligatorio que todavía no existe en
+  el producto** (Res. 424/2020 SCI). Todo en
+  [legal/README.md](legal/README.md).
 
 ---
 

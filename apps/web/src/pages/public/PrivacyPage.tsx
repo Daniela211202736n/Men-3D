@@ -10,6 +10,7 @@
  * despues.
  */
 import { useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 
 import { Spinner } from '../../components/ui.js';
 import { ApiError, publicApi } from '../../lib/api.js';
@@ -228,6 +229,17 @@ export function PrivacyPage(): ReactNode {
           </>
         )}
       </section>
+
+      {/* Esta pantalla es la que resuelve: ver, descargar y borrar. El texto
+          legal va al final, para quien lo quiera leer, y no al principio. */}
+      <div className="row tiny muted" style={{ flexWrap: 'wrap', gap: 14 }}>
+        <Link to="/legal/privacidad" className="tiny muted">
+          Política de privacidad
+        </Link>
+        <Link to="/legal/terminos-comensal" className="tiny muted">
+          Términos para el comensal
+        </Link>
+      </div>
     </div>
   );
 }
