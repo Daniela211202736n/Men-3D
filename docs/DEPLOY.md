@@ -233,8 +233,13 @@ apuradas**, y que estos resuelven:
 1. **La URL de Prisma lleva `?schema=public`.** `pg_dump` la rechaza con
    `invalid URI query parameter`. Pasar `$DATABASE_URL` tal cual no funciona.
 2. **`pg_dump` se niega a volcar un servidor más nuevo que él.** Si tu cliente
-   es 16 y el servidor 17, no hay respaldo. El script lo comprueba antes y,
-   en desarrollo, usa el cliente que ya está dentro del contenedor.
+   es 16 y el servidor 17, no hay respaldo. El script lo comprueba antes de
+   escribir nada y busca el cliente correcto por su cuenta: primero el local,
+   si sirve; si no, el del contenedor de `docker compose`; y si tampoco —un
+   servidor de verdad, o la integración continua— un contenedor descartable
+   `postgres:<versión>-alpine`, que trae el cliente de la misma versión mayor
+   que el servidor. Sólo se rinde si no hay ninguno de los tres, y entonces te
+   dice qué paquete instalar.
 
 Restaurar encima de la base en uso pide confirmación escrita. Un error de
 tipeo no puede borrar la carta de un cliente.

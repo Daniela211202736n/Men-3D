@@ -56,9 +56,14 @@ if [[ -n "$LOCAL" && "$LOCAL" -ge "$SERVIDOR" ]]; then
 elif docker compose ps --status running postgres 2>/dev/null | grep -q postgres; then
   echo "pg_restore local es ${LOCAL:-ninguno} y el servidor es $SERVIDOR: uso el del contenedor."
   restaurar() { docker compose exec -T postgres pg_restore "$@"; }
+elif docker info >/dev/null 2>&1; then
+  # Ver la nota equivalente en backup.sh. `-i` porque el volcado entra por la
+  # entrada estandar.
+  echo "pg_restore local es ${LOCAL:-ninguno} y el servidor es $SERVIDOR: uso un contenedor postgres:$SERVIDOR-alpine."
+  restaurar() { docker run --rm -i --network host "postgres:$SERVIDOR-alpine" pg_restore "$@"; }
 else
   echo "pg_restore local es ${LOCAL:-ninguno}, el servidor es $SERVIDOR." >&2
-  echo "Instala postgresql-client-$SERVIDOR, o levanta el contenedor." >&2
+  echo "Instala postgresql-client-$SERVIDOR, o levanta docker." >&2
   exit 1
 fi
 

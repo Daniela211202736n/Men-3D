@@ -50,9 +50,17 @@ elif docker compose ps --status running postgres 2>/dev/null | grep -q postgres;
   # En desarrollo el cliente que hace falta ya esta dentro del contenedor.
   echo "pg_dump local es ${LOCAL:-ninguno} y el servidor es $SERVIDOR: uso el del contenedor."
   volcar() { docker compose exec -T postgres pg_dump "$@"; }
+elif docker info >/dev/null 2>&1; then
+  # Hay docker pero la base no es de este compose: un servidor de verdad, o la
+  # integracion continua, donde PostgreSQL corre como contenedor de servicio.
+  # Un contenedor descartable de la MISMA version mayor trae el cliente que
+  # hace falta. `--network host` para que el `localhost` de la URL siga
+  # apuntando a la misma base.
+  echo "pg_dump local es ${LOCAL:-ninguno} y el servidor es $SERVIDOR: uso un contenedor postgres:$SERVIDOR-alpine."
+  volcar() { docker run --rm --network host "postgres:$SERVIDOR-alpine" pg_dump "$@"; }
 else
   echo "pg_dump local es ${LOCAL:-ninguno}, el servidor es $SERVIDOR." >&2
-  echo "Instala postgresql-client-$SERVIDOR, o levanta el contenedor (docker compose up -d)." >&2
+  echo "Instala postgresql-client-$SERVIDOR, o levanta docker (docker compose up -d)." >&2
   exit 1
 fi
 
