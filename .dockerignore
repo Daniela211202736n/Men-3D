@@ -1,0 +1,23 @@
+# Lo que nunca debe entrar en una imagen
+node_modules
+**/node_modules
+dist
+**/dist
+.git
+.github
+*.log
+
+# Secretos: las credenciales se inyectan como variables de entorno, no se
+# hornean en la imagen.
+.env
+.env.*
+!.env.example
+
+# Artefactos de desarrollo
+apps/api/storage
+apps/api/prisma/*.db
+apps/web/dev-dist
+**/.vite
+**/*.tsbuildinfo
+coverage
+docs

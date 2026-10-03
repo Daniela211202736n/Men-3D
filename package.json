@@ -13,15 +13,27 @@
   },
   "scripts": {
     "build": "npm run build -w @men3d/shared && npm run build -w @men3d/api && npm run build -w @men3d/web",
+    "db:deploy": "npm run db:deploy -w @men3d/api",
+    "db:generate": "npm run db:generate -w @men3d/api",
+    "db:plans": "npm run db:plans -w @men3d/api",
+    "db:down": "docker compose down",
+    "db:migrate": "npm run db:migrate -w @men3d/api",
+    "db:push": "npm run db:push -w @men3d/api",
+    "db:reset": "npm run db:reset -w @men3d/api",
+    "db:seed": "npm run db:seed -w @men3d/api",
+    "db:studio": "npm run db:studio -w @men3d/api",
+    "db:up": "docker compose up -d --wait",
     "dev": "npm run dev -w @men3d/api & npm run dev -w @men3d/web",
     "dev:api": "npm run dev -w @men3d/api",
     "dev:web": "npm run dev -w @men3d/web",
-    "db:push": "npm run db:push -w @men3d/api",
-    "db:seed": "npm run db:seed -w @men3d/api",
-    "db:studio": "npm run db:studio -w @men3d/api",
-    "setup": "npm install && npm run models:sample && npm run build -w @men3d/shared && npm run db:push && npm run db:seed",
     "models:sample": "node scripts/generate-sample-models.mjs",
+    "setup": "npm install && npm run models:sample && npm run build -w @men3d/shared && npm run db:generate && npm run db:up && npm run db:deploy && npm run db:seed",
+    "test": "npm run test -w @men3d/api",
     "typecheck": "npm run typecheck -w @men3d/shared && npm run typecheck -w @men3d/api && npm run typecheck -w @men3d/web",
-    "test": "npm run test -w @men3d/api"
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
   }
 }

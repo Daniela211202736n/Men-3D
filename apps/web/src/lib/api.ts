@@ -19,6 +19,7 @@ import type {
   PairingDto,
   PlanTier,
   ReviewDto,
+  TeamUserDto,
   VenueDto,
 } from '@men3d/shared';
 
@@ -183,6 +184,27 @@ export const publicApi = {
   registerScan: (slug: string, token: string) =>
     request<void>(`/api/public/${slug}/scan`, { method: 'POST', body: { token } }),
 
+  /** Todo lo que el restaurante tiene de este dispositivo. */
+  privacyData: (slug: string, guestId: string, signal?: AbortSignal) =>
+    request<{
+      restaurante: string;
+      guestId: string;
+      generadoEl: string;
+      explicacion: string;
+      pedidos: unknown[];
+      opiniones: unknown[];
+      puntos: { saldo: number; acumuladoHistorico: number; movimientos: unknown[] } | null;
+      analitica: string;
+    }>(`/api/public/${slug}/privacy/data`, { query: { guestId }, signal }),
+
+  deletePrivacyData: (slug: string, guestId: string) =>
+    request<{
+      pedidosAnonimizados: number;
+      opinionesBorradas: number;
+      cuentaDePuntosBorrada: boolean;
+      mensaje: string;
+    }>(`/api/public/${slug}/privacy/data`, { method: 'DELETE', query: { guestId } }),
+
   loyalty: (slug: string, guestId: string, signal?: AbortSignal) =>
     request<LoyaltyAccountDto>(`/api/public/${slug}/loyalty`, {
       query: { guestId },
@@ -201,6 +223,8 @@ export const publicApi = {
       notes?: string;
       redeemPoints?: number;
       guestId?: string;
+      /** Idioma de la carta: define el del correo de confirmacion. */
+      locale?: string;
     },
   ) =>
     request<{ order: OrderDto; checkoutUrl: string | null; clientSecret: string | null }>(
@@ -208,8 +232,18 @@ export const publicApi = {
       { method: 'POST', body },
     ),
 
-  order: (slug: string, code: string, signal?: AbortSignal) =>
-    request<OrderDto>(`/api/public/${slug}/orders/${code}`, { signal }),
+  /**
+   * Un pedido por su codigo.
+   *
+   * El `guestId` va para que el servidor devuelva tambien el nombre y las
+   * aclaraciones: con el codigo solo —que son cuatro caracteres y se canta en
+   * el mostrador— no alcanza para dar datos personales.
+   */
+  order: (slug: string, code: string, guestId?: string, signal?: AbortSignal) =>
+    request<OrderDto>(`/api/public/${slug}/orders/${code}`, {
+      ...(guestId ? { query: { guestId } } : {}),
+      signal,
+    }),
 };
 
 /* --------------------------------------------------------------- backoffice */
@@ -256,6 +290,88 @@ export const adminApi = {
     email: string;
     password: string;
   }) => request<AuthResponseDto>('/api/auth/register', { method: 'POST', body }),
+
+  // --- contraseña ----------------------------------------------------------
+  forgotPassword: (email: string) =>
+    request<{ message: string }>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: { email },
+    }),
+
+  resetPassword: (token: string, password: string) =>
+    request<{ message: string }>('/api/auth/reset-password', {
+      method: 'POST',
+      body: { token, password },
+    }),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ message: string }>('/api/auth/change-password', {
+      method: 'POST',
+      body: { currentPassword, newPassword },
+      auth: true,
+    }),
+
+  // --- abono mensual -------------------------------------------------------
+  subscription: (signal?: AbortSignal) =>
+    request<{
+      status: string;
+      provider: string;
+      tier?: string;
+      monthlyCents?: number;
+      currentPeriodEnd: string | null;
+      graceEndsAt: string | null;
+      lastPaymentAt: string | null;
+      diasDeGracia?: number;
+      pasarelaLista?: boolean;
+    }>('/api/admin/subscription', { auth: true, signal }),
+
+  startSubscription: () =>
+    request<{ initPoint: string; providerRef: string }>('/api/admin/subscription', {
+      method: 'POST',
+      auth: true,
+    }),
+
+  startSetupFee: () =>
+    request<{ checkoutUrl: string; montoCents: number }>(
+      '/api/admin/subscription/setup-fee',
+      { method: 'POST', auth: true },
+    ),
+
+  cancelSubscription: () =>
+    request<{ status: string; mensaje: string }>('/api/admin/subscription', {
+      method: 'DELETE',
+      auth: true,
+    }),
+
+  // --- equipo --------------------------------------------------------------
+  team: (signal?: AbortSignal) =>
+    request<TeamUserDto[]>('/api/admin/users', { auth: true, signal }),
+
+  createTeamUser: (body: {
+    email: string;
+    name: string;
+    password: string;
+    role: 'ADMIN' | 'STAFF';
+  }) => request<TeamUserDto>('/api/admin/users', { method: 'POST', body, auth: true }),
+
+  updateTeamUser: (
+    id: string,
+    body: { name?: string; role?: 'ADMIN' | 'STAFF'; isActive?: boolean },
+  ) =>
+    request<TeamUserDto>(`/api/admin/users/${id}`, {
+      method: 'PATCH',
+      body,
+      auth: true,
+    }),
+
+  deactivateTeamUser: (id: string) =>
+    request<TeamUserDto>(`/api/admin/users/${id}`, { method: 'DELETE', auth: true }),
+
+  transferOwnership: (id: string) =>
+    request<TeamUserDto>(`/api/admin/users/${id}/transfer-ownership`, {
+      method: 'POST',
+      auth: true,
+    }),
 
   me: (signal?: AbortSignal) =>
     request<{ user: AuthResponseDto['user']; plan: AuthResponseDto['plan'] }>(
@@ -452,12 +568,64 @@ export async function downloadQrPdf(
   URL.revokeObjectURL(href);
 }
 
-/** Sube un modelo 3D o una imagen y devuelve su URL servible. */
+interface UploadTicket {
+  kind: 'direct' | 'presigned';
+  uploadUrl: string;
+  headers: Record<string, string>;
+  key: string;
+  publicUrl: string;
+  maxBytes: number;
+}
+
+/**
+ * Sube un modelo 3D o una imagen y devuelve su URL servible.
+ *
+ * Primero pide un permiso de subida y despues manda el archivo a donde ese
+ * permiso indique: a la API (driver `local`) o directo al bucket con una URL
+ * firmada (driver `s3`). El frontend no sabe —ni necesita saber— cual de los
+ * dos esta configurado; con `s3` el archivo nunca pasa por el servidor.
+ */
 export async function uploadAsset(file: File): Promise<{ url: string; bytes: number }> {
   const token = getToken();
+
+  const ticket = await request<UploadTicket>('/api/admin/assets/upload-ticket', {
+    method: 'POST',
+    body: { contentType: file.type },
+    auth: true,
+  });
+
+  if (file.size > ticket.maxBytes) {
+    throw new ApiError(
+      413,
+      'FILE_TOO_LARGE',
+      `El archivo pesa ${(file.size / 1024 / 1024).toFixed(1)} MB y el maximo es ` +
+        `${Math.round(ticket.maxBytes / 1024 / 1024)} MB.`,
+    );
+  }
+
+  if (ticket.kind === 'presigned') {
+    // PUT directo al bucket. Las cabeceras vienen en el permiso porque la firma
+    // las cubre: mandar otras hace que el bucket rechace la subida.
+    const put = await fetch(ticket.uploadUrl, {
+      method: 'PUT',
+      headers: ticket.headers,
+      body: file,
+    });
+    if (!put.ok) {
+      throw new ApiError(
+        put.status,
+        'UPLOAD_FAILED',
+        'No se pudo subir el archivo al almacenamiento. Reintenta en un momento.',
+      );
+    }
+    return { url: ticket.publicUrl, bytes: file.size };
+  }
+
+  // Camino `direct`: la API recibe el archivo, verifica su firma binaria y lo
+  // guarda.
   const form = new FormData();
   form.append('file', file);
-  const response = await fetch(buildUrl('/upload'), {
+  const response = await fetch(buildUrl(ticket.uploadUrl), {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: form,
@@ -467,7 +635,11 @@ export async function uploadAsset(file: File): Promise<{ url: string; bytes: num
     | ApiErrorDto;
   if (!response.ok) {
     const err = (payload as ApiErrorDto).error;
-    throw new ApiError(response.status, err?.code ?? 'UPLOAD_FAILED', err?.message ?? 'Fallo la subida');
+    throw new ApiError(
+      response.status,
+      err?.code ?? 'UPLOAD_FAILED',
+      err?.message ?? 'Fallo la subida',
+    );
   }
   return payload as { url: string; bytes: number };
 }

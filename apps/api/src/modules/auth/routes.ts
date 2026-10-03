@@ -3,8 +3,11 @@
  */
 import {
   PLAN_FEATURES,
+  changePasswordSchema,
+  forgotPasswordSchema,
   loginSchema,
   registerTenantSchema,
+  resetPasswordSchema,
   type AuthResponseDto,
   type Feature,
   type PlanTier,
@@ -16,6 +19,11 @@ import type { FastifyInstance } from 'fastify';
 import { conflict, unauthorized } from '../../lib/errors.js';
 import { prisma } from '../../prisma.js';
 import { getTenantFeatures } from '../../plugins/auth.js';
+import {
+  cambiarContrasenia,
+  restablecerContrasenia,
+  solicitarRestablecimiento,
+} from './password-reset.js';
 
 /** Coste de bcrypt: 12 rondas es el equilibrio habitual hoy. */
 const BCRYPT_ROUNDS = 12;
@@ -147,6 +155,49 @@ export default async function authRoutes(app: FastifyInstance): Promise<void> {
     };
     return response;
   });
+
+  /**
+   * Pide un enlace para restablecer la contraseña.
+   *
+   * Responde siempre 202, exista o no la cuenta: distinguir los casos
+   * convertiria este formulario en un detector de emails registrados.
+   */
+  app.post('/forgot-password', async (request, reply) => {
+    const { email } = forgotPasswordSchema.parse(request.body);
+    try {
+      await solicitarRestablecimiento(email);
+    } catch (error) {
+      // El envio del correo ya va sin esperar y se registra aparte; lo que puede
+      // fallar aca es la base. Tampoco eso debe revelar nada ni romper la
+      // pantalla: queda en el log para quien opera.
+      request.log.error({ err: error }, 'fallo al preparar la recuperacion');
+    }
+    return reply.status(202).send({
+      message: 'Si existe una cuenta con ese email, va a recibir un enlace.',
+    });
+  });
+
+  /** Fija la contraseña nueva con el token del enlace. */
+  app.post('/reset-password', async (request) => {
+    const input = resetPasswordSchema.parse(request.body);
+    await restablecerContrasenia(input.token, input.password);
+    return { message: 'Contraseña actualizada. Ya podes entrar con la nueva.' };
+  });
+
+  /** Cambio de contraseña desde dentro de la sesion. */
+  app.post(
+    '/change-password',
+    { preHandler: [app.requireAuth] },
+    async (request) => {
+      const input = changePasswordSchema.parse(request.body);
+      await cambiarContrasenia(
+        request.authUser!.sub,
+        input.currentPassword,
+        input.newPassword,
+      );
+      return { message: 'Contraseña actualizada.' };
+    },
+  );
 
   /** Rehidrata la sesion del backoffice al recargar la pagina. */
   app.get('/me', { preHandler: [app.requireAuth] }, async (request) => {

@@ -14,9 +14,9 @@ import {
   type DietTag,
   type Locale,
 } from '@men3d/shared';
+import rateLimit from '@fastify/rate-limit';
 import type { FastifyInstance } from 'fastify';
 
-import { env } from '../../env.js';
 import { badRequest, notFound } from '../../lib/errors.js';
 import { toReviewDto } from '../../lib/serialize.js';
 import { prisma } from '../../prisma.js';
@@ -190,15 +190,31 @@ export default async function publicRoutes(app: FastifyInstance): Promise<void> 
     }
 
     const input = orderCreateSchema.parse(request.body);
-    const returnUrl = new URL(`/m/${tenant.slug}/pedido`, env.PUBLIC_WEB_URL).toString();
-    const result = await createOrder(tenant, input, returnUrl);
+    const result = await createOrder(tenant, input);
     return reply.status(201).send(result);
   });
 
   /** Seguimiento del pedido por su codigo corto. */
-  app.get('/orders/:code', async (request) => {
-    const tenant = tenantOf(request);
-    const { code } = request.params as { code: string };
-    return getOrderByCode(tenant.id, tenant.currency, code);
+  /**
+   * Limite propio, mas estricto que el de la carta.
+   *
+   * Probar codigos al azar es el unico ataque que tiene sentido contra esta
+   * ruta, y con el limite general —300 por minuto— un restaurante con unos
+   * miles de pedidos filtraria cientos por dia. Con 30 cada diez minutos,
+   * enumerar deja de rendir; un comensal mirando como va lo suyo no se acerca
+   * ni de lejos a ese numero.
+   */
+  await app.register(async (instance) => {
+    await instance.register(rateLimit, { max: 30, timeWindow: '10 minutes' });
+
+    instance.get('/orders/:code', async (request) => {
+      const tenant = tenantOf(request);
+      const { code } = request.params as { code: string };
+      const { guestId } = request.query as { guestId?: string };
+      // El `guestId` es lo unico que distingue al comensal que hizo el pedido
+      // de alguien probando codigos al azar. Sin el, la respuesta viene sin
+      // datos personales. Ver `getOrderByCode`.
+      return getOrderByCode(tenant.id, tenant.currency, code, guestId);
+    });
   });
 }

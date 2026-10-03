@@ -1,5 +1,6 @@
 /** Acceso al backoffice y alta de un restaurante nuevo. */
 import { useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 
 import { ApiError, adminApi, setToken } from '../../lib/api.js';
 import { slugifyName } from '../../lib/slug.js';
@@ -127,16 +128,23 @@ export function LoginPage(): ReactNode {
         </button>
       </form>
 
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm"
-        onClick={() => {
-          setMode(mode === 'login' ? 'register' : 'login');
-          setError(null);
-        }}
-      >
-        {mode === 'login' ? 'No tengo cuenta todavia' : 'Ya tengo cuenta'}
-      </button>
+      <div className="row-between wrap" style={{ gap: 8 }}>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => {
+            setMode(mode === 'login' ? 'register' : 'login');
+            setError(null);
+          }}
+        >
+          {mode === 'login' ? 'No tengo cuenta todavia' : 'Ya tengo cuenta'}
+        </button>
+        {mode === 'login' && (
+          <Link to="/admin/recuperar" className="btn btn-ghost btn-sm">
+            Olvide mi contraseña
+          </Link>
+        )}
+      </div>
 
       {import.meta.env.DEV && (
         <div className="card card-pad stack stack-2">

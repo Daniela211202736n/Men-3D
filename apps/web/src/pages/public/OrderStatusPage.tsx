@@ -5,12 +5,14 @@
  * cuando llega a un estado final: una pantalla olvidada sobre la mesa no tiene
  * que seguir golpeando el servidor toda la tarde.
  */
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { OrderStatus } from '@men3d/shared';
 
 import { ErrorState, Spinner } from '../../components/ui.js';
+import { AnalyticsEvent, track } from '../../lib/analytics.js';
+import { getGuestId } from '../../lib/session.js';
 import { publicApi } from '../../lib/api.js';
 import { money, relativeTime } from '../../lib/format.js';
 import { useAsync } from '../../lib/useAsync.js';
@@ -31,15 +33,31 @@ export function OrderStatusPage(): ReactNode {
   const { slug, venue, locale, t } = useVenue();
 
   const { data: order, loading, error, reload } = useAsync(
-    (signal) => publicApi.order(slug, code, signal),
+    // El guestId identifica al dispositivo que hizo el pedido: sin el, el
+    // servidor no devuelve el nombre ni las aclaraciones.
+    (signal) => publicApi.order(slug, code, getGuestId(), signal),
     [slug, code],
   );
 
   useEffect(() => {
     if (!order || FINAL_STATES.includes(order.status)) return;
-    const timer = setInterval(reload, 15_000);
+    // Mientras se espera la acreditacion del pago se consulta mas seguido: el
+    // comensal acaba de volver de la pasarela y esta mirando la pantalla.
+    const everyMs = order.status === OrderStatus.PENDING_PAYMENT ? 5_000 : 15_000;
+    const timer = setInterval(reload, everyMs);
     return () => clearInterval(timer);
   }, [order, reload]);
+
+  // La compra se registra cuando el pago queda confirmado, no al enviar el
+  // pedido: con una pasarela con redireccion, enviar no es pagar.
+  const purchaseTracked = useRef(false);
+  useEffect(() => {
+    if (!order || purchaseTracked.current) return;
+    if (order.status === OrderStatus.PENDING_PAYMENT) return;
+    if (order.status === OrderStatus.CANCELED) return;
+    purchaseTracked.current = true;
+    track(AnalyticsEvent.PURCHASE, { value: order.totalCents });
+  }, [order]);
 
   if (loading && !order) return <Spinner label={t('common.loading')} />;
   if (error || !order || !venue) {
@@ -62,6 +80,22 @@ export function OrderStatusPage(): ReactNode {
         </p>
         <p className="tiny muted">{relativeTime(order.createdAt, locale)}</p>
       </header>
+
+      {order.status === OrderStatus.PENDING_PAYMENT && (
+        <div
+          className="card card-pad stack stack-2"
+          role="status"
+          style={{ borderColor: 'var(--warning)' }}
+        >
+          <span className="bold small" style={{ color: 'var(--warning)' }}>
+            Esperando la confirmacion del pago
+          </span>
+          <p className="small secondary">
+            Si ya pagaste, puede tardar unos segundos en acreditarse. Esta pantalla
+            se actualiza sola; no hace falta que pagues de nuevo.
+          </p>
+        </div>
+      )}
 
       {/* Progreso: el estado actual se marca con texto y con peso, no solo con
           color, para que se entienda sin distinguir tonos. */}

@@ -25,6 +25,15 @@ apps/api/storage/
 npm-debug.log*
 .DS_Store
 
-# declaraciones generadas por el chequeo de tipos
-apps/web/*.d.ts
-apps/web/src/**/*.d.ts
+# Las declaraciones que emite `tsc -b` van a apps/web/node_modules/.tmp, que ya
+# esta ignorado por la regla de node_modules. No hace falta ignorar *.d.ts
+# dentro de src: ahi solo viven las declaraciones escritas a mano para
+# dependencias que no publican tipos, y son codigo fuente.
+
+# Respaldos de la base: nunca al repositorio.
+backups/
+*.dump
+
+# Salidas de Playwright.
+test-results/
+playwright-report/

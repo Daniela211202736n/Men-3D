@@ -9,7 +9,7 @@ import type { FastifyInstance } from 'fastify';
 
 import { unauthorized } from '../../lib/errors.js';
 import type { AuthPayload } from '../../plugins/auth.js';
-import { kdsHub } from './kds.js';
+import { kdsBus } from './kds.js';
 
 /** Latido cada 25 s: nginx corta conexiones ociosas a los 60 s por defecto. */
 const HEARTBEAT_MS = 25_000;
@@ -40,7 +40,7 @@ export default async function kdsStreamRoutes(app: FastifyInstance): Promise<voi
     });
     reply.raw.write(': conectado al stream del KDS\n\n');
 
-    const unsubscribe = kdsHub.subscribe(tenantId, (event) => {
+    const unsubscribe = kdsBus().subscribe(tenantId, (event) => {
       reply.raw.write(`event: ${event.type}\n`);
       reply.raw.write(`data: ${JSON.stringify(event.order)}\n\n`);
     });

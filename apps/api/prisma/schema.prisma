@@ -1,11 +1,13 @@
 // ===========================================================================
 // Men-3D — esquema de datos (multi-tenant, una sola base)
 //
-// Portabilidad: el provider es `sqlite` para que el MVP arranque sin
-// infraestructura (`npm run setup` y listo). El esquema evita deliberadamente
-// todo lo que no es portable — enums nativos, arrays, Json — asi que pasar a
-// PostgreSQL en produccion es cambiar el `provider` de abajo por "postgresql"
-// y el DATABASE_URL. Ver docs/DATABASE.md.
+// Base: PostgreSQL. `docker compose up -d` levanta una local.
+//
+// El esquema sigue evitando enums nativos y arrays, y guarda las listas cortas
+// como texto separado por comas. No es herencia de SQLite: es lo que mantiene
+// las migraciones baratas (agregar un valor a un enum nativo bloquea la tabla)
+// y el vocabulario en un solo lugar, `@men3d/shared`, validado con zod en el
+// borde. Ver docs/DATABASE.md.
 //
 // Aislamiento entre restaurantes: cada tabla de negocio lleva `tenantId` y
 // todas las consultas pasan por `src/lib/tenant-scope.ts`, que lo inyecta.
@@ -13,10 +15,14 @@
 
 generator client {
   provider = "prisma-client-js"
+  // `native` para desarrollo; el target musl es el de la imagen Alpine con la
+  // que se despliega. Sin declararlo, el motor de consultas no arranca dentro
+  // del contenedor y el fallo recien aparece en el despliegue.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -126,14 +132,56 @@ model Subscription {
   planId   String
   plan     Plan   @relation(fields: [planId], references: [id])
 
-  /// TRIALING | ACTIVE | PAST_DUE | CANCELED
+  /// TRIALING | ACTIVE | PAST_DUE | SUSPENDED | CANCELED
+  ///
+  /// PAST_DUE es "fallo un cobro pero sigue andando todo": hay gracia por
+  /// delante. SUSPENDED es "se acabo la gracia": el restaurante vuelve al plan
+  /// gratuito sin perder nada de lo cargado.
   status        String    @default("TRIALING")
   trialEndsAt   DateTime?
   currentPeriodEnd DateTime?
+  /// Hasta cuando sigue andando todo despues de un cobro fallido.
+  graceEndsAt   DateTime?
   /// Si el setup inicial ya fue cobrado.
   setupFeePaid  Boolean   @default(false)
+
+  /// MANUAL | MERCADOPAGO. MANUAL es el alta a mano, que sigue sirviendo para
+  /// los primeros clientes y para el periodo de prueba.
+  provider      String    @default("MANUAL")
+  /// Id de la suscripcion en la pasarela (`preapproval` de MercadoPago).
+  providerRef   String?   @unique
+  lastPaymentAt DateTime?
+  canceledAt    DateTime?
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  events BillingEvent[]
+}
+
+/// Aviso de la pasarela sobre una suscripcion, guardado para no procesarlo dos
+/// veces y para poder reconstruir que paso.
+///
+/// MercadoPago reintenta los avisos y no garantiza orden ni unicidad: sin esta
+/// tabla, un reintento del aviso de cobro podria extender el periodo dos veces.
+model BillingEvent {
+  id             String @id @default(cuid())
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  provider String
+  /// Id del aviso en la pasarela. Es lo que vuelve idempotente el webhook.
+  eventId  String
+  /// preapproval | authorized_payment
+  type     String
+  /// Estado que traia el aviso, para poder auditar sin volver a la pasarela.
+  status   String?
+  payload  String
+
+  createdAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@index([subscriptionId])
 }
 
 /// Usuario del backoffice. El email es unico a nivel plataforma.
@@ -150,7 +198,28 @@ model User {
   lastLoginAt  DateTime?
   createdAt    DateTime @default(now())
 
+  passwordResetTokens PasswordResetToken[]
+
   @@index([tenantId])
+}
+
+/// Token de recuperacion de contraseña.
+///
+/// Se guarda el **hash** del token, nunca el token en claro: con acceso de
+/// lectura a la base, un atacante no puede fabricar el enlace de nadie.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// SHA-256 del token que viaja en el enlace.
+  tokenHash String   @unique
+  expiresAt DateTime
+  /// Momento en que se uso; un token solo sirve una vez.
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // ------------------------------------------------------------------- CARTA
@@ -356,6 +425,9 @@ model Order {
   customerEmail String?
   notes         String?
   guestId       String?
+  /// Idioma en el que el comensal hizo el pedido. Sin esto, el correo de
+  /// confirmacion de alguien que navego en ingles saldria en español.
+  locale        String?
 
   pointsEarned   Int @default(0)
   pointsRedeemed Int @default(0)

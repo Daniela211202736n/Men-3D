@@ -28,6 +28,7 @@ export function CartPage(): ReactNode {
 
   const guestId = getGuestId();
   const [customerName, setCustomerName] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
   const [notes, setNotes] = useState('');
   const [usePoints, setUsePoints] = useState(false);
   const [sending, setSending] = useState(false);
@@ -78,7 +79,7 @@ export function CartPage(): ReactNode {
     if (sending) return;
     setSending(true);
     try {
-      const { order } = await publicApi.createOrder(slug, {
+      const { order, checkoutUrl } = await publicApi.createOrder(slug, {
         items: cart.lines.map((line) => ({
           dishId: line.dishId,
           quantity: line.quantity,
@@ -87,12 +88,25 @@ export function CartPage(): ReactNode {
         serviceMode: 'DINE_IN',
         tableLabel: getTable(),
         customerName: customerName || undefined,
+        customerEmail: customerEmail || undefined,
+        // El idioma en el que esta mirando la carta: define el del correo.
+        locale,
         notes: notes || undefined,
         redeemPoints: redeemablePoints || undefined,
         guestId,
       });
-      track(AnalyticsEvent.PURCHASE, { value: order.totalCents });
       cart.clear();
+
+      if (checkoutUrl) {
+        // Pasarela con redireccion (MercadoPago): el pago ocurre fuera de la
+        // PWA, asi que todavia no hay compra que registrar — la confirma el
+        // webhook. Se sale del sitio con `replace` para que el boton "atras"
+        // del celular no devuelva al carrito ya vaciado.
+        window.location.replace(checkoutUrl);
+        return;
+      }
+
+      track(AnalyticsEvent.PURCHASE, { value: order.totalCents });
       navigate(`/m/${slug}/pedido/${order.code}`);
     } catch (error) {
       toast.show(
@@ -147,6 +161,22 @@ export function CartPage(): ReactNode {
             maxLength={80}
             onChange={(e) => setCustomerName(e.target.value)}
           />
+        </label>
+        {/* Opcional de verdad: quien come en el local muchas veces no deja
+            ninguno, y el seguimiento ya lo tiene en pantalla. Pedirlo para
+            poder pedir seria exigir un dato que no necesitamos. */}
+        <label className="field">
+          <span className="label">{t('cart.email')}</span>
+          <input
+            className="input"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            value={customerEmail}
+            maxLength={120}
+            onChange={(e) => setCustomerEmail(e.target.value)}
+          />
+          <span className="tiny muted">{t('cart.emailHint')}</span>
         </label>
         <label className="field">
           <span className="label">{t('cart.notes')}</span>

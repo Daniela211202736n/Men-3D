@@ -10,8 +10,12 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
     "@google/model-viewer": "^4.1.0",
     "@men3d/shared": "*",
+    "draco3dgltf": "^1.5.7",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.1"

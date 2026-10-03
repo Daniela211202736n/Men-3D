@@ -2,31 +2,97 @@
 
 Definición ejecutable: [`apps/api/prisma/schema.prisma`](../apps/api/prisma/schema.prisma).
 
-## Portabilidad: SQLite en desarrollo, PostgreSQL en producción
+## PostgreSQL, con migraciones versionadas
 
-El MVP usa **SQLite** para que `npm run setup` deje todo andando sin instalar
-nada. El esquema evita a propósito todo lo que no es portable —enums nativos,
-arrays, columnas `Json`— así que pasar a PostgreSQL es cambiar una línea:
+`docker compose up -d` levanta una base local; `npm run db:deploy` aplica las
+migraciones de `apps/api/prisma/migrations/`.
 
-```prisma
-datasource db {
-  provider = "postgresql"   // antes: "sqlite"
-  url      = env("DATABASE_URL")
-}
-```
+El esquema evita enums nativos y arrays, y guarda las listas cortas como texto
+separado por comas. No es herencia de una base anterior: es lo que mantiene las
+migraciones baratas —agregar un valor a un enum nativo bloquea la tabla— y el
+vocabulario en un solo lugar, `@men3d/shared`, validado con zod en el borde.
 
 Dos consecuencias de esa decisión, documentadas donde importan:
 
 - **Los enums viajan como `String`.** El vocabulario válido vive en
   `@men3d/shared` (`OrderStatus`, `Allergen`, `DietTag`…) y se valida con zod en
-  el borde. En PostgreSQL se pueden promover a enums nativos sin tocar el código.
+  el borde.
 - **Las listas cortas se guardan separadas por comas** (`enabledLocales`,
   `serviceModes`, `features`). `lib/lists.ts` es el único archivo que conoce ese
-  detalle; en PostgreSQL pasan a `text[]` cambiando solo ese archivo.
+  detalle.
 
-Un detalle más al migrar: en SQLite `contains` se traduce a `LIKE`, que ya ignora
-mayúsculas en ASCII. En PostgreSQL hay que agregar `mode: 'insensitive'` en
-`buildDishWhere()` —o, mejor, un índice trigram para búsqueda difusa.
+**La búsqueda ignora mayúsculas y tildes.** La resuelve `buscarIdsDePlatos()`
+en SQL crudo, porque Prisma no sabe expresar `unaccent`.
+
+Es la diferencia entre que la carta se pueda buscar y que no. `mode:
+'insensitive'` resuelve mayúsculas pero **no tildes**, y en español eso deja
+afuera medio vocabulario gastronómico: quien escribe "cafe" en el teclado del
+celular —sin tilde, como escribe casi todo el mundo— no encuentra "Café
+cortado", y el restaurante nunca se entera de por qué ese plato no se pide. El
+problema es fácil de no ver porque los datos de ejemplo solían estar escritos
+sin tildes; ahora los llevan a propósito.
+
+`men3d_unaccent()` normaliza los dos lados de la comparación: minúsculas y sin
+diacríticos, con la `ñ` plegada a `n`. Es un envoltorio `IMMUTABLE` sobre
+`unaccent()` —que de por sí es `STABLE`, y PostgreSQL no indexa expresiones que
+no sean inmutables— con el diccionario fijado.
+
+Hay índices GIN de trigramas (`pg_trgm`) sobre esa expresión en el nombre y la
+descripción del plato, en los ingredientes y en las traducciones. Sin ellos, un
+`LIKE '%texto%'` recorre la tabla entera.
+
+### Si no encuentra nada, busca por parecido
+
+Un comensal escribe rápido en el celular y se come una letra. Sin tolerancia a
+eso se queda mirando "no encontramos nada" y concluye que el plato no está.
+
+La búsqueda por parecido **solo corre si la exacta no devolvió nada**. Quien
+escribe bien ve el orden que eligió el restaurante —destacados primero—, no un
+orden por cercanía que no le aporta nada.
+
+Usa `word_similarity` y no `similarity`, y la diferencia no es un detalle:
+`similarity` compara las cadenas enteras, así que "milanesa" contra "Milanesa
+napolitana con papas" saca 0.30 —apenas más que un error de tipeo— y obligaría
+a un umbral tan bajo que entraría cualquier cosa. `word_similarity` mide contra
+la palabra que mejor pega dentro del nombre, que es como escribe el comensal:
+una palabra, no la frase entera.
+
+El umbral de **0.5** y el mínimo de **4 caracteres** están medidos contra la
+carta, no elegidos a ojo:
+
+| Escrito | Plato | `word_similarity` |
+| --- | --- | --- |
+| `milanessa` | Milanesa napolitana | 0.727 |
+| `provleta` | Provoleta a la parrilla | 0.583 |
+| — **umbral 0.5** — | | |
+| `pizza` | Provoleta a la parrilla | 0.167 |
+| `sushi` | Milanesa napolitana | 0.000 |
+
+Con tres letras el trigrama es ruido: `ana` —un pedazo sin sentido de
+"napolitana"— da exactamente 0.5 contra la milanesa, justo el umbral. Con
+cuatro vuelve a separar, y por eso ese es el mínimo.
+
+Cuando los platos vienen por parecido se respeta el orden de la consulta (del
+más parecido al menos), que ahí es lo único que importa.
+
+La búsqueda devuelve ids y los filtros restantes los sigue armando Prisma
+(dietas, alérgenos, categoría, archivados). Son dos consultas en vez de una,
+pero evita duplicar en SQL reglas que ya están expresadas una sola vez.
+
+## Dar de baja un restaurante
+
+`prisma.tenant.delete()` **no alcanza**. La cascada intenta borrar los platos,
+pero `OrderItem.dishId` y `Dish.categoryId` son `onDelete: Restrict` a propósito
+—para que nadie borre un plato que figura en un pedido histórico— y PostgreSQL
+no garantiza el orden en que resuelve las cascadas.
+
+La salida no es aflojar las restricciones, que protegen el histórico de ventas,
+sino hacer explícito el único camino legítimo: `deleteTenantCompletely()` en
+`modules/tenants/service.ts` vacía de adentro hacia afuera (pedidos → platos →
+categorías → tenant) en una transacción.
+
+Para dejar de operar sin perder nada, `Tenant.isActive = false` saca al
+restaurante de circulación y conserva todo.
 
 ## Mapa de tablas
 

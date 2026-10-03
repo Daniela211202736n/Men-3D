@@ -30,6 +30,8 @@ la URL.
 | 422 | Falló la validación del esquema |
 | 429 | Límite de tasa (20 / 5 min en auth, 300 / min en el resto) |
 | 501 | Proveedor de pagos no implementado |
+| 502 | No se pudo hablar con la pasarela de pagos (la notificación se reintenta) |
+| 503 | Falta configuración (pasarela sin credenciales, IA sin clave) |
 
 ---
 
@@ -42,10 +44,19 @@ GET  /health
 ## Autenticación
 
 ```
-POST /api/auth/register     alta de restaurante + dueño (14 días de Pro)
-POST /api/auth/login        → { token, user, plan }
-GET  /api/auth/me           rehidrata la sesión   🔒
+POST /api/auth/register           alta de restaurante + dueño (14 días de Pro)
+POST /api/auth/login              → { token, user, plan }
+GET  /api/auth/me                 rehidrata la sesión   🔒
+POST /api/auth/forgot-password    { email }        manda el enlace de recuperación
+POST /api/auth/reset-password     { token, password }
+POST /api/auth/change-password    { currentPassword, newPassword }   🔒
 ```
+
+`forgot-password` responde siempre `{ ok: true }`, exista o no la cuenta: la
+respuesta no puede servir para averiguar qué correos están registrados. El token
+del enlace se guarda hasheado (SHA-256), vence en una hora y sirve una sola vez;
+cualquier token vencido, usado o inexistente devuelve el mismo
+`RESET_TOKEN_INVALID`, así que probar enlaces al azar no enseña nada.
 
 ## Carta pública — `/api/public/:slug`
 
@@ -62,6 +73,10 @@ GET  /loyalty?guestId=                   saldo de puntos
 POST /orders                             crear pedido y cobrar
 GET  /orders/:code                       seguimiento por código corto
 ```
+
+`POST /orders` devuelve `{ order, checkoutUrl, clientSecret }`. Con una pasarela
+con redirección (MercadoPago) el pedido queda en `PENDING_PAYMENT` y hay que
+mandar al comensal a `checkoutUrl`; lo pagado lo confirma el webhook.
 
 ### `GET /menu`
 
@@ -100,6 +115,43 @@ PUT    /dishes/order               { ids: [...] }
 GET    /dishes/:id/pairings        POST   /dishes/:id/pairings
 DELETE /pairings/:pairingId
 ```
+
+### Equipo
+
+```
+GET    /users                      POST   /users        { name, email, password, role }
+PATCH  /users/:id                  { name?, role?, isActive? }
+DELETE /users/:id                  baja lógica (desactivar)
+POST   /users/:id/transfer-ownership
+```
+
+Solo OWNER y ADMIN entran acá. El servidor además impide: cambiarse el rol a uno
+mismo, desactivarse a uno mismo, dejar el local sin ningún OWNER activo, y que un
+ADMIN toque a un OWNER. El alta solo crea `ADMIN` o `STAFF`; el único camino a
+OWNER es `transfer-ownership`, que intercambia los dos roles en una transacción
+—nunca quedan dos dueños ni ninguno.
+
+### Abono del restaurante
+
+```
+GET    /subscription      estado, proximo cobro, dias de gracia
+POST   /subscription      inicia el debito mensual → { initPoint }   solo OWNER
+DELETE /subscription      da de baja el abono                        solo OWNER
+```
+
+El plan se activa con el aviso de la pasarela, nunca con la vuelta del
+navegador. Si no se cobra: 7 días de gracia en los que no cambia nada, y
+después el local vuelve al plan gratuito —la carta y el visor 3D del comensal
+siguen en pie. Ver [PAYMENTS.md](PAYMENTS.md).
+
+### Configuración inicial
+
+```
+POST /subscription/setup-fee      → { checkoutUrl, montoCents }   solo OWNER
+```
+
+Cobro único. El importe se verifica contra la pasarela antes de marcarlo como
+pagado. Ver [PAYMENTS.md](PAYMENTS.md).
 
 ### Local, marca y plan
 
@@ -141,12 +193,38 @@ PUT  /translations/:dishId/:locale      corrección manual (queda MANUAL)
 `POST /translations` responde `503 AI_NOT_CONFIGURED` con un mensaje claro si no
 hay `ANTHROPIC_API_KEY`, en vez de fallar de forma rara.
 
+## Webhooks de pago
+
+```
+POST /api/payments/webhook/:provider          notificación de la pasarela
+GET  /api/payments/webhook/:provider/health   estado de configuración
+```
+
+Rutas públicas: las autentica la firma de la notificación, no un token. El
+código de respuesta decide si la pasarela reintenta — ver
+[PAYMENTS.md](PAYMENTS.md).
+
+## Webhook del abono
+
+```
+POST /api/billing/webhook/mercadopago/subscription
+```
+
+Firmado igual que el de pedidos. Sin `MERCADOPAGO_WEBHOOK_SECRET` responde 401
+en vez de aplicar a ciegas.
+
 ## Archivos
 
 ```
-POST /upload          🔒  multipart; valida la firma binaria real
-GET  /assets/:name        solo nombres generados por el servidor
+POST /api/admin/assets/upload-ticket  🔒  permiso de subida
+POST /upload                          🔒  multipart (driver `local`)
+GET  /media/:name                         solo nombres generados por el servidor
+GET  /api/admin/assets/health         🔒  estado del almacenamiento
 ```
+
+El backoffice pide primero un permiso de subida y manda el archivo a donde ese
+permiso indique: a la API (driver `local`) o directo al bucket con una URL
+firmada (driver `s3`), sin pasar por el servidor. Ver [DEPLOY.md](DEPLOY.md).
 
 ---
 

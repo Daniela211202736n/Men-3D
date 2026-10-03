@@ -340,7 +340,16 @@ img { max-width: 100%; display: block; }
 }
 
 .search-bar { position: relative; }
-.search-bar .input { padding-left: 40px; padding-right: 40px; }
+.search-bar .input { padding-left: 40px; padding-right: 96px; }
+
+/* Chromium y Safari dibujan su propia X dentro de los input[type=search], y
+   cae justo encima del boton "Limpiar": tapaba su primera letra. Se queda el
+   nuestro, que dice lo que hace y tiene area tactil de sobra. */
+.search-bar .input::-webkit-search-cancel-button,
+.search-bar .input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
 .search-icon {
   position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
   color: var(--text-muted); pointer-events: none; line-height: 0;

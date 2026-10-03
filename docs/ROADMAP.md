@@ -6,33 +6,62 @@ Ordenado por lo que bloquea cobrar el primer peso.
 
 | Tema | Estado | Qué falta |
 | --- | --- | --- |
-| **Pasarela de pagos** | Interfaz definida, proveedor simulado funcionando | Implementar Stripe o MercadoPago contra `PaymentProvider` y su webhook (verificar firma, mover el pedido a `PAID`, acreditar puntos con la clave de idempotencia que ya existe). Es un archivo nuevo, no una refactorización. |
-| **PostgreSQL** | Esquema portable, corriendo en SQLite | Cambiar el provider, correr migraciones, agregar `mode: 'insensitive'` en la búsqueda o un índice trigram. |
-| **Modelos en CDN** | Se sirven desde la API | Bucket + CDN, subida firmada desde el backoffice, y conservar el aviso de peso. |
-| **KDS multi-instancia** | Bus en memoria | Redis pub/sub. El resto del código solo conoce `publish` y `subscribe`. |
-| **Correo transaccional** | No existe | Confirmación de pedido y recuperación de contraseña. |
+| **Pasarela de pagos** | **MercadoPago implementado** (Checkout Pro, webhook firmado, importe verificado, idempotente). Stripe sigue sin implementar | Probar contra una cuenta real de MercadoPago: lo verificado hasta ahora son las piezas (firma, conversión de importes, liquidación del pedido) y el recorrido del frontend con la respuesta simulada, no una transacción de punta a punta. |
+| **PostgreSQL** | **Hecho.** Migraciones versionadas, búsqueda sin tildes (`unaccent` + `pg_trgm` con índices GIN), baja de restaurantes en orden de dependencias | — |
+| **Modelos en CDN** | **Hecho.** Driver `s3` con subida firmada directa al bucket; `local` sigue para desarrollo | Probarlo contra un bucket real: lo verificado es el cableado contra un doble, no una integración con AWS/R2. |
+| **Imágenes y despliegue** | **Hecho.** Dockerfiles de API y PWA, compose completo, migraciones como paso aparte, CI que compila las imágenes | Elegir plataforma y publicar las imágenes en un registro. |
+| **Correo transaccional** | **Hecho.** Recuperación de contraseña y confirmación de pedido, en el idioma en que pidió el comensal. Driver `log` para desarrollo, Resend para producción | Probar Resend con un dominio verificado. |
 
 ## 2. Necesario antes de abrir a clientes
 
-- **Pruebas automatizadas.** Hay 28 pruebas de dominio (`npm test`) sobre las
-  reglas que cobran mal si se rompen: totales e IVA, canje de puntos, máquina de
-  estados del pedido, listas portables y clasificación del recomendador. Faltan
-  las de integración de la API contra una base real (aislamiento entre tenants,
-  checkout completo, webhooks) y un *end-to-end* del flujo escanear → ver en 3D →
-  pedir; la verificación de ese flujo hoy es un recorrido de navegador manual.
-- **Recuperación de contraseña** y gestión de usuarios del equipo.
-- **Backups** y un plan de restauración probado.
-- **Cumplimiento**: aviso de cookies/analítica, exportación y borrado de datos del
-  comensal (hoy son identificadores opacos en su navegador, lo que ayuda, pero el
-  aviso hace falta igual).
-- **Límites por plan aplicados en escritura.** Hoy se muestran en "Plan y uso"
-  pero no se bloquea la carga al superarlos.
+- **Respaldos: hechos.** `scripts/backup.sh` y `scripts/restore.sh`, con una
+  prueba que respalda, restaura en una base limpia y compara —incluida la
+  función de búsqueda y sus índices, que si no viajaran dejarían la base
+  restaurada rota en silencio. Falta agendarlo en el servidor que se elija y
+  sincronizar las copias fuera de esa máquina (ver DEPLOY.md).
+
+- **Pruebas automatizadas.** Hay 176 pruebas (`npm test`) más 5 de recorrido en navegador (`npm run e2e`): totales e IVA, canje de
+  puntos, máquina de estados del pedido, el adaptador de MercadoPago completo,
+  el almacenamiento local y S3, las de integración del camino del dinero
+  (liquidación, idempotencia, importe manipulado, concurrencia), **el aislamiento
+  entre tenants contra la base real** (33 pruebas: el token de A contra los datos
+  de B en lectura, escritura, superficie pública y tokens) y las del onboarding
+  (reglas del equipo, límites del plan, recuperación de contraseña). Esa primera
+  tanda de aislamiento encontró un agujero real: el ticket del KDS —que viaja en
+  una URL— servía como sesión completa del backoffice. **El *end-to-end* del comensal ya está**
+  (`npm run e2e`, Playwright, en CI): escanear → buscar → ver en 3D → pedir →
+  pagar → seguir, en un viewport de celular y contra la compilación de
+  producción.
+- **KDS multi-instancia: hecho.** Con `REDIS_URL` el bus pasa a Redis pub/sub y
+  la API escala horizontalmente. Probado con dos buses contra un Redis real: un
+  pedido publicado en uno llega a la cocina conectada al otro.
+- **CSP: hecha**, midiendo. En `apps/web/nginx.conf`, verificada sin violaciones
+  en la carta, el visor 3D, el mapa y las siete pantallas del backoffice,
+  incluido el stream SSE del KDS. Ver DEPLOY.md.
+- **Cumplimiento: hecho.** Aviso de medición con las dos respuestas pesando lo
+  mismo —y que si dice que no, no sale ni un evento, comprobado contando las
+  peticiones del navegador—, más una pantalla para ver, descargar y borrar los
+  datos. Borrar anonimiza los pedidos en vez de borrarlos: son comprobantes de
+  venta que el restaurante está obligado a conservar. Ver UX-FLOWS.md §F.
+  Falta la parte que no es código: política de privacidad y términos escritos
+  por alguien que sepa del marco legal de cada país donde se opere.
+- **Facturación de la suscripción: hecha.** Débito mensual con MercadoPago
+  (`preapproval`), período de gracia de 7 días y degradación al plan gratuito
+  por impago —la carta del comensal nunca se apaga, ver PAYMENTS.md. El cobro de la configuración
+  inicial también está (Checkout Pro, webhook propio, importe verificado contra
+  la pasarela). Falta probar los dos contra una cuenta real.
 
 ## 3. Lo que sigue al producto
 
-- **Optimización de modelos en el servidor**: comprimir con Draco al subir, para
-  no depender de que el restaurante suba un GLB liviano.
-- **Rollups de analítica** (ver ARCHITECTURE.md §6).
+- **Optimización de modelos: hecha**, pero en el navegador y no en el servidor.
+  Con `STORAGE_DRIVER=s3` el GLB viaja directo al bucket con una URL firmada y
+  la API nunca ve los bytes: comprimir del lado del servidor obligaría a
+  deshacer esa decisión. Se comprime con Draco en el backoffice antes de subir
+  —entre 74% y 82% más liviano en los modelos de ejemplo— y si no mejora, se
+  sube el original.
+- **Analítica: agregada en SQL.** La tabla de rollup que proponía
+  ARCHITECTURE.md §6 resultaba resolver el problema equivocado; los números
+  están ahí.
 - **Fotogrametría asistida**: que el restaurante genere el modelo 3D desde el
   celular dando una vuelta alrededor del plato. Es lo que elimina el mayor costo
   de implantación.

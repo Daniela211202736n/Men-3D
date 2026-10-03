@@ -57,6 +57,41 @@ export const registerTenantSchema = z.object({
 });
 export type RegisterTenantInput = z.infer<typeof registerTenantSchema>;
 
+/* ---------------------------------------------------------- equipo */
+
+export const teamUserCreateSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2).max(80),
+  password: z.string().min(8, 'minimo 8 caracteres'),
+  /** No se puede crear otro OWNER desde aca: la titularidad se transfiere. */
+  role: z.enum(['ADMIN', 'STAFF']),
+});
+export type TeamUserCreateInput = z.infer<typeof teamUserCreateSchema>;
+
+export const teamUserUpdateSchema = z.object({
+  name: z.string().min(2).max(80).optional(),
+  role: z.enum(['ADMIN', 'STAFF']).optional(),
+  isActive: z.boolean().optional(),
+});
+export type TeamUserUpdateInput = z.infer<typeof teamUserUpdateSchema>;
+
+/* --------------------------------------------------------- contraseña */
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(20),
+  password: z.string().min(8, 'minimo 8 caracteres'),
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8, 'minimo 8 caracteres'),
+});
+
 /* ----------------------------------------------------------------- menu */
 
 export const menuQuerySchema = z.object({
@@ -199,6 +234,8 @@ export const orderCreateSchema = z.object({
   redeemPoints: z.number().int().min(0).optional(),
   /** Identifica al comensal anonimo entre sesiones (localStorage). */
   guestId: z.string().max(64).optional(),
+  /** Idioma en el que esta mirando la carta: define el idioma del correo. */
+  locale: localeSchema.optional(),
 });
 export type OrderCreateInput = z.infer<typeof orderCreateSchema>;
 

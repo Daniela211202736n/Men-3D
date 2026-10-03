@@ -6,7 +6,8 @@
  *   /api/auth/*                         — alta y login del backoffice
  *   /api/public/:slug/*                 — todo lo que ve el comensal (sin auth)
  *   /api/admin/*                        — backoffice (requiere JWT del tenant)
- *   POST /upload  ·  GET /assets/:name  — modelos 3D e imagenes
+ *   POST /api/payments/webhook/:provider — notificaciones de la pasarela
+ *   POST /upload  ·  GET /media/:name   — modelos 3D e imagenes
  */
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
@@ -21,10 +22,19 @@ import adminCatalogRoutes from './modules/admin/catalog.routes.js';
 import adminInsightsRoutes from './modules/admin/insights.routes.js';
 import adminOperationsRoutes from './modules/admin/operations.routes.js';
 import adminSettingsRoutes from './modules/admin/settings.routes.js';
+import adminTeamRoutes from './modules/admin/team.routes.js';
 import assetRoutes from './modules/assets/routes.js';
 import authRoutes from './modules/auth/routes.js';
 import kdsStreamRoutes from './modules/orders/kds.routes.js';
+import paymentWebhookRoutes from './modules/payments/routes.js';
+import billingRoutes, {
+  billingWebhookRoutes,
+  setupFeeWebhookRoutes,
+} from './modules/billing/routes.js';
+import { iniciarTareas } from './modules/billing/tareas.js';
+import { cerrarBusKds, kdsBus } from './modules/orders/kds.js';
 import publicRoutes from './modules/menu/routes.js';
+import privacyRoutes from './modules/privacy/routes.js';
 import { prisma } from './prisma.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
@@ -70,8 +80,14 @@ export async function buildApp(): Promise<FastifyInstance> {
   // --- autenticacion -------------------------------------------------------
   await app.register(
     async (instance) => {
-      // Limite estricto en login/registro: es la puerta que se ataca por fuerza bruta.
-      await instance.register(rateLimit, { max: 20, timeWindow: '5 minutes' });
+      // Limite estricto para todo el grupo: es la puerta que se ataca por fuerza
+      // bruta. Cubre el login, el registro, y tambien la recuperacion de
+      // contraseña —donde el riesgo no es adivinar el token (son 256 bits) sino
+      // usar el formulario para inundar de correo a una direccion ajena.
+      await instance.register(rateLimit, {
+        max: env.AUTH_RATE_LIMIT_MAX,
+        timeWindow: '5 minutes',
+      });
       await instance.register(authRoutes);
     },
     { prefix: '/api/auth' },
@@ -79,6 +95,8 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // --- carta publica -------------------------------------------------------
   await app.register(publicRoutes, { prefix: '/api/public/:slug' });
+  // Ver y borrar los datos del comensal. Va aparte por su limite mas estricto.
+  await app.register(privacyRoutes, { prefix: '/api/public/:slug' });
 
   // --- backoffice ----------------------------------------------------------
   await app.register(
@@ -90,9 +108,21 @@ export async function buildApp(): Promise<FastifyInstance> {
       await instance.register(adminSettingsRoutes);
       await instance.register(adminOperationsRoutes);
       await instance.register(adminInsightsRoutes);
+      await instance.register(adminTeamRoutes);
+      await instance.register(billingRoutes);
     },
     { prefix: '/api/admin' },
   );
+
+  // --- webhooks de las pasarelas de pago ------------------------------------
+  // Publico a proposito: lo autentica la firma de la notificacion, no un token.
+  await app.register(paymentWebhookRoutes, { prefix: '/api/payments' });
+  // El cobro del abono al restaurante, que no es lo mismo que el cobro de un
+  // pedido al comensal: distinto webhook, distinto ciclo de vida.
+  await app.register(billingWebhookRoutes, { prefix: '/api/billing' });
+  // El cobro unico de configuracion inicial: endpoint propio porque no es un
+  // pedido y el webhook de pedidos no encontraria nada que mover.
+  await app.register(setupFeeWebhookRoutes, { prefix: '/api/billing' });
 
   // --- stream del KDS ------------------------------------------------------
   // Fuera del grupo anterior: se autentica con su propio ticket de 60 s.
@@ -100,6 +130,19 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // --- assets --------------------------------------------------------------
   await app.register(assetRoutes);
+
+
+  // Suspension por impago y limpieza de tokens vencidos.
+  iniciarTareas(app);
+
+  // El bus del KDS con Redis abre conexiones propias: sin esto, apagar la API
+  // las deja colgadas y el proceso no termina.
+  app.addHook('onClose', async () => {
+    await cerrarBusKds();
+  });
+  if (kdsBus().modo === 'redis') {
+    app.log.info('bus del KDS: Redis (la API puede correr con varias instancias)');
+  }
 
   return app;
 }

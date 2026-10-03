@@ -1,0 +1,90 @@
+# Superpone la API y la PWA sobre la infraestructura de docker-compose.yml.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.apps.yml up -d --build
+#
+# Con esto la aplicacion entera corre en contenedores: la PWA en
+# http://localhost:8080 y la API detras del mismo origen, en /api.
+#
+# Para produccion, ver docs/DEPLOY.md: cambian el origen de las imagenes, los
+# secretos y el almacenamiento (STORAGE_DRIVER=s3).
+
+services:
+  # Las migraciones corren en un paso aparte que termina, no al arrancar la API.
+  # Con varias replicas, aplicarlas en el arranque hace que todas compitan por
+  # migrar la misma base.
+  api-migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      secrets:
+        - ca_bundle
+    # `npm run` y no `npx`: el binario de prisma vive en el workspace.
+    #
+    # Dos pasos: las migraciones y el catalogo de planes. El catalogo es dato de
+    # referencia, no de demo: sin el, un restaurante nuevo no tiene suscripcion
+    # y le quedan los pedidos deshabilitados. Va la variante `:prod`, que corre
+    # con node sobre dist, porque la imagen no lleva tsx.
+    command: ['sh', '-c', 'npm run db:deploy && npm run db:plans:prod']
+    environment:
+      DATABASE_URL: postgresql://men3d:men3d_dev@postgres:5432/men3d?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      secrets:
+        - ca_bundle
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://men3d:men3d_dev@postgres:5432/men3d?schema=public
+      # Cambiar en cualquier despliegue real.
+      JWT_SECRET: cambiar-este-secreto-en-produccion-de-verdad-xx
+      CORS_ORIGIN: http://localhost:8080
+      PUBLIC_WEB_URL: http://localhost:8080
+      PUBLIC_API_URL: http://localhost:8080
+      PAYMENTS_PROVIDER: mock
+      STORAGE_DRIVER: local
+      # Bus del KDS por Redis. Con una sola instancia no haria falta, pero asi
+      # esta pila ejercita el mismo camino que produccion: si el bus con Redis
+      # se rompe, se nota aca y no con una cocina que deja de recibir pedidos.
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api-migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    volumes:
+      # Con STORAGE_DRIVER=local los modelos viven en el disco del contenedor:
+      # sin este volumen se pierden al recrearlo. En produccion se usa s3 y este
+      # volumen sobra.
+      - api-storage:/app/apps/api/storage
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      secrets:
+        - ca_bundle
+    ports:
+      - '8080:80'
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  api-storage:
+
+# CA opcional para redes que interceptan TLS (proxies corporativos). Si el
+# archivo no existe, la compilacion funciona igual: el Dockerfile lo ignora.
+secrets:
+  ca_bundle:
+    file: ${CA_BUNDLE_FILE:-/dev/null}

@@ -28,8 +28,9 @@
                      └────────────────┘  └──────────────────┘
 
                      ┌────────────────┐
-                     │ CDN / bucket   │  modelos GLB · USDZ · fotos
-                     └────────────────┘
+                     │ CDN / bucket S3│  modelos GLB · USDZ · fotos
+                     └────────────────┘  (subida firmada directa; el archivo
+                                          nunca pasa por la API)
 ```
 
 ## 2. Por qué cada pieza
@@ -120,6 +121,28 @@ que ningún menú de papel puede dar. En los datos de demostración el flan tien
 Hoy los informes agregan en memoria sobre el rango pedido, lo que rinde de sobra
 para un restaurante. A partir de ~1 millón de eventos por tenant conviene:
 
+**Lo medido, con un año de un local activo (654.000 eventos):**
+
+| rango | agregando en Node | agregando en SQL |
+| --- | --- | --- |
+| 30 días | 0,70 s | 0,14 s |
+| 90 días | 2,23 s | 0,41 s |
+| 365 días | **12,72 s** | **1,50 s** |
+
+El informe agregaba en memoria. No es que agregar en memoria sea lento: es que
+mandar 654.000 filas por el cable para contarlas lo es. Ahora agrega en SQL
+(`modules/analytics/agregados.ts`) y la pantalla anual pasó de inservible a
+usable.
+
+**Por eso no hay tabla de rollup.** Era el paso que proponía este documento, y
+medir mostró que resolvía el problema equivocado: un rollup agrega una tabla, un
+job nocturno, datos que se quedan viejos y una recarga histórica que mantener;
+un `GROUP BY` da el mismo resultado hoy, sin nada de eso. Sigue siendo el paso
+siguiente, pero recién cuando el `GROUP BY` deje de alcanzar — y ahora hay con
+qué medir cuándo pasa eso.
+
+Si llega ese momento, el camino es el mismo de siempre:
+
 1. Tabla de rollup diario (`tenantId`, `date`, `dishId`, `type`, `count`,
    `durationSum`) escrita por un job nocturno; los informes leen de ahí.
 2. Particionar `AnalyticsEvent` por mes en PostgreSQL y archivar lo viejo.
@@ -186,18 +209,19 @@ gráfico para lectores de pantalla.
 | Subida de archivos | Se valida la firma binaria real del archivo, no el `Content-Type` que declara el cliente: un ejecutable renombrado a `.glb` se rechaza. Límite de 25 MB. |
 | Entrega de archivos | El nombre lo genera el servidor (32 hex + extensión) y la ruta solo acepta ese formato exacto. No hay listado de directorio ni se usa nada del nombre original: no hay superficie de *path traversal*. Verificado con `../../../etc/passwd` y su variante codificada. |
 | Fuerza bruta | 20 intentos cada 5 minutos en `/api/auth`; 300 por minuto en el resto. |
+| Webhooks de pago | No los protege un token sino la firma de la notificación (HMAC-SHA256, comparación en tiempo constante, ventana de 15 minutos contra reenvíos). El estado del cobro se consulta contra la pasarela en vez de creerle al mensaje, y el importe se coteja con el total del pedido. Detalle en [PAYMENTS.md](PAYMENTS.md). |
 | Dependencias | Se descartó `@fastify/static` por vulnerabilidades de *path traversal* y se sirve lo necesario con una ruta propia de lista blanca. |
 
 ## 11. Camino a producción
 
-1. **Base**: cambiar el provider de Prisma a `postgresql` y correr las
-   migraciones. El esquema ya es portable.
-2. **Assets**: subir los GLB a un bucket con CDN y guardar la URL pública.
-3. **Pagos**: implementar el adaptador real contra la interfaz `PaymentProvider`
-   y su webhook; el ciclo del pedido ya contempla el cobro diferido.
-4. **KDS**: cambiar el bus en memoria por Redis pub/sub para correr varias
-   instancias.
-5. **Despliegue**: la API en un contenedor detrás de un proxy (con `trustProxy`
-   ya activado en producción), la PWA como estático en el CDN.
+1. ~~**Base**: PostgreSQL con migraciones versionadas.~~ Hecho.
+2. ~~**Assets**: bucket compatible con S3 con subida firmada y CDN.~~ Hecho
+   (`STORAGE_DRIVER=s3`).
+3. ~~**Imágenes**: Dockerfiles de API y PWA, migraciones como paso aparte.~~
+   Hecho — ver [DEPLOY.md](DEPLOY.md).
+4. **Pagos**: MercadoPago está implementado; falta probarlo contra una cuenta
+   real y publicar la URL del webhook en su panel (ver [PAYMENTS.md](PAYMENTS.md)).
+5. **KDS**: cambiar el bus en memoria por Redis pub/sub para correr varias
+   instancias. Es lo único que hoy impide escalar la API horizontalmente.
 6. **Observabilidad**: los logs ya son estructurados; falta enviarlos y agregar
    trazas y alertas sobre la tasa de error del checkout.
