@@ -46,7 +46,11 @@ async function crearRestaurante(
   email: string,
   codigoPedido: string,
 ): Promise<Omit<Restaurante, 'token'>> {
-  const plan = await prisma.plan.findFirst({ where: { tier: 'PRO' } });
+  // `findUniqueOrThrow` y no `findFirst`: si el catalogo de planes no esta,
+  // el restaurante queda sin suscripcion y la API contesta ORDERING_DISABLED
+  // antes de mirar el plato. La prueba seguia pasando por otro motivo o
+  // fallaba por uno confuso; que falte el plan tiene que ser un error claro.
+  const plan = await prisma.plan.findUniqueOrThrow({ where: { tier: 'PRO' } });
   const passwordHash = await bcrypt.hash(PASSWORD, 10);
 
   const tenant = await prisma.tenant.create({
@@ -57,9 +61,7 @@ async function crearRestaurante(
       enabledLocales: 'es',
       serviceModes: 'DINE_IN',
       branding: { create: {} },
-      ...(plan
-        ? { subscription: { create: { planId: plan.id, status: 'ACTIVE' } } }
-        : {}),
+      subscription: { create: { planId: plan.id, status: 'ACTIVE' } },
       users: {
         create: { email, name: 'Dueño', passwordHash, role: 'OWNER' },
       },

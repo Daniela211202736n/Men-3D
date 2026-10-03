@@ -12,7 +12,6 @@
 import {
   AnalyticsEvent,
   LOYALTY_POINTS,
-  PLAN_FEATURES,
   type Allergen,
   type DietTag,
 } from '@men3d/shared';
@@ -20,6 +19,7 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 import { generateOrderCode, generateQrToken } from '../src/lib/ids.js';
+import { sembrarPlanes } from '../src/modules/plans/catalogo.js';
 import { deleteTenantsBySlug } from '../src/modules/tenants/service.js';
 
 const prisma = new PrismaClient();
@@ -207,50 +207,10 @@ const VERDE_MENU: SeedCategory[] = [
 ];
 
 async function seedPlans() {
-  const plans = [
-    {
-      tier: 'FREE',
-      name: 'Prueba',
-      monthlyCents: 0,
-      setupFeeCents: 0,
-      maxDishes: 15,
-      max3dModels: 3,
-    },
-    {
-      tier: 'STARTER',
-      name: 'Starter',
-      monthlyCents: 2900000,
-      setupFeeCents: 9900000,
-      maxDishes: 60,
-      max3dModels: 15,
-    },
-    {
-      tier: 'PRO',
-      name: 'Pro',
-      monthlyCents: 5900000,
-      setupFeeCents: 19900000,
-      maxDishes: 0,
-      max3dModels: 60,
-    },
-    {
-      tier: 'ENTERPRISE',
-      name: 'Enterprise',
-      monthlyCents: 14900000,
-      setupFeeCents: 49900000,
-      maxDishes: 0,
-      max3dModels: 0,
-    },
-  ] as const;
-
-  for (const plan of plans) {
-    const features = [...(PLAN_FEATURES[plan.tier] ?? [])].join(',');
-    await prisma.plan.upsert({
-      where: { tier: plan.tier },
-      create: { ...plan, features },
-      update: { ...plan, features },
-    });
-  }
-  console.log(`  planes: ${plans.length}`);
+  // El catalogo vive en prisma/planes.ts: no es dato de demo, es dato de
+  // referencia, y un despliegue lo aplica sin pasar por aca.
+  const cantidad = await sembrarPlanes(prisma);
+  console.log(`  planes: ${cantidad}`);
 }
 
 async function wipeDemoTenants() {

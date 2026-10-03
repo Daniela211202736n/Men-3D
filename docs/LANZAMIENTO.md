@@ -110,7 +110,10 @@ Para el primer cliente, un VPS alcanza y sobra.
 2. **Variables de entorno.** Las obligatorias están en
    [DEPLOY.md § Variables](DEPLOY.md). `JWT_SECRET` tiene que ser un valor al
    azar de 32 caracteres o más: la API se niega a arrancar con el de desarrollo.
-3. **Migraciones**, como paso aparte del arranque: `npm run db:deploy`.
+3. **Migraciones y catálogo de planes**, como paso aparte del arranque:
+   `npm run db:deploy` y después `npm run db:plans:prod`. Los dos: sin planes,
+   quien se registra queda sin suscripción y le salen los pedidos
+   deshabilitados —ver [DEPLOY.md § Migraciones](DEPLOY.md).
 4. **Las imágenes.** `docker compose -f docker-compose.yml -f docker-compose.apps.yml build`
    y publicalas en un registro.
 5. **Levantar y comprobar.** Las sondas de

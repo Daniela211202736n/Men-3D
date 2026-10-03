@@ -19,7 +19,12 @@ services:
       secrets:
         - ca_bundle
     # `npm run` y no `npx`: el binario de prisma vive en el workspace.
-    command: ['npm', 'run', 'db:deploy']
+    #
+    # Dos pasos: las migraciones y el catalogo de planes. El catalogo es dato de
+    # referencia, no de demo: sin el, un restaurante nuevo no tiene suscripcion
+    # y le quedan los pedidos deshabilitados. Va la variante `:prod`, que corre
+    # con node sobre dist, porque la imagen no lleva tsx.
+    command: ['sh', '-c', 'npm run db:deploy && npm run db:plans:prod']
     environment:
       DATABASE_URL: postgresql://men3d:men3d_dev@postgres:5432/men3d?schema=public
     depends_on:

@@ -128,6 +128,7 @@ men-3d/
 | `npm run db:up` / `npm run db:down` | Levanta o apaga PostgreSQL |
 | `npm run db:migrate` | Crea y aplica una migración nueva |
 | `npm run db:deploy` | Aplica las migraciones pendientes (producción) |
+| `npm run db:plans` | Aplica el catálogo de planes (dato de referencia, no de demo) |
 | `npm run db:seed` | Vuelve a sembrar los datos de demostración |
 | `npm run db:reset` | Borra la base y la reconstruye desde las migraciones |
 | `npm run db:studio` | Explorador visual de la base |

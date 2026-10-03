@@ -131,10 +131,20 @@ migrar la misma base. Es un paso aparte que termina:
 
 ```bash
 npm run db:deploy          # = prisma migrate deploy
+npm run db:plans:prod      # el catálogo de planes
 ```
 
-En `docker-compose.apps.yml` eso es el servicio `api-migrate`, y la API espera a
-que haya terminado con éxito. En plataformas con *release command* (Fly, Render,
+**Los dos pasos, no sólo el primero.** El catálogo de planes (FREE, STARTER,
+PRO, ENTERPRISE) es dato de referencia, no de demostración: vive en
+`apps/api/src/modules/plans/catalogo.ts` y una base recién migrada no lo tiene.
+Sin planes, quien se registra queda sin suscripción y le aparece la carta con
+los pedidos deshabilitados. Es idempotente, así que corre en cada despliegue y
+de paso actualiza precios y topes si los cambiaste. La variante `:prod` corre
+con `node` sobre `dist`, porque la imagen de producción no lleva `tsx`; en
+desarrollo es `npm run db:plans`.
+
+En `docker-compose.apps.yml` eso es el servicio `api-migrate`, que corre los dos
+pasos, y la API espera a que haya terminado con éxito. En plataformas con *release command* (Fly, Render,
 Railway) se configura ahí; la imagen de la API trae el CLI de Prisma justamente
 para poder hacerlo.
 

@@ -73,6 +73,14 @@ jobs:
       - name: Aplicar migraciones
         run: npm run db:deploy
 
+      - name: Catalogo de planes
+        # Los planes son datos de referencia, no de demo: sin ellos un
+        # restaurante no tiene suscripcion y le quedan los pedidos
+        # deshabilitados. Las pruebas de abono, setup fee, correo de
+        # confirmacion y aislamiento los necesitan, y corren antes del sembrado
+        # de demo.
+        run: npm run db:plans
+
       - name: Chequeo de tipos
         run: npm run typecheck
 

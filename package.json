@@ -15,6 +15,7 @@
     "build": "npm run build -w @men3d/shared && npm run build -w @men3d/api && npm run build -w @men3d/web",
     "db:deploy": "npm run db:deploy -w @men3d/api",
     "db:generate": "npm run db:generate -w @men3d/api",
+    "db:plans": "npm run db:plans -w @men3d/api",
     "db:down": "docker compose down",
     "db:migrate": "npm run db:migrate -w @men3d/api",
     "db:push": "npm run db:push -w @men3d/api",
