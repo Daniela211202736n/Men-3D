@@ -66,6 +66,9 @@ const TeamPage = lazy(() =>
 const LegalPage = lazy(() =>
   import('./pages/public/LegalPage.js').then((m) => ({ default: m.LegalPage })),
 );
+const ExperimentsPage = lazy(() =>
+  import('./pages/admin/ExperimentsPage.js').then((m) => ({ default: m.ExperimentsPage })),
+);
 const RevocationPage = lazy(() =>
   import('./pages/public/RevocationPage.js').then((m) => ({ default: m.RevocationPage })),
 );
@@ -143,6 +146,7 @@ export function App(): ReactNode {
         <Route path="local" element={<Lazy element={<VenueSettingsPage />} />} />
         <Route path="plan" element={<Lazy element={<PlanPage />} />} />
         <Route path="equipo" element={<Lazy element={<TeamPage />} />} />
+        <Route path="pruebas" element={<Lazy element={<ExperimentsPage />} />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

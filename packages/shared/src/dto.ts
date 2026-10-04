@@ -15,6 +15,7 @@ import type {
   PlanTier,
   ServiceMode,
   UserRole,
+  Variant,
 } from './enums.js';
 
 export interface BrandingDto {
@@ -110,6 +111,16 @@ export interface MenuDto {
   categories: CategoryDto[];
   dishes: DishDto[];
   locale: Locale;
+  /**
+   * Que variante de prueba A/B le toco a cada plato, por id de plato.
+   *
+   * Vacio cuando no hay pruebas corriendo, que es el caso normal. El cliente lo
+   * devuelve en los eventos de analitica para poder partir el embudo por
+   * variante: el servidor no puede deducirlo porque no recibe el `guestId`
+   * junto con los eventos, y que ese vinculo no exista es lo que mantiene la
+   * analitica anonima.
+   */
+  experiments: Record<string, Variant>;
 }
 
 export interface ReviewDto {

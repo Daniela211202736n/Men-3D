@@ -75,6 +75,13 @@ término buscado y el idioma. **No guarda tu dirección IP, ni el modelo de tu
 teléfono, ni el navegador, y no existe ninguna columna, en ninguna tabla, que
 ate ese identificador de visita al identificador de tu dispositivo.**
 
+Hay una sola excepción, y la decimos porque sería fácil no decirla: si el
+restaurante está corriendo una prueba A/B sobre un plato, el evento guarda
+además **una letra, `A` o `B`**, que es la variante que te tocó. Sale de tu
+identificador, así que en rigor es un dato derivado de él —pero es **un bit**,
+el mismo que comparten la mitad de los dispositivos que entran a esa carta, y no
+sirve para volver a vos. No cambia nada de lo que sigue.
+
 Esa ausencia es deliberada y tiene una consecuencia honesta: **no podemos
 decirte cuáles de esos eventos son tuyos, ni darte una copia, ni borrarlos.** No
 es que no queramos buscarlos; es que no hay forma de saberlo, ni para nosotros

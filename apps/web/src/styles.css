@@ -644,3 +644,13 @@ table.data tbody tr:hover { background: var(--surface-2); }
   text-align: left; vertical-align: top;
 }
 .legal-prose th { background: var(--surface-2); color: var(--text-primary); font-weight: 600; }
+
+/* ------------------------------------------------------- pruebas A/B
+   La tabla de resultados: numeros chicos y alineados, que es como se comparan
+   dos columnas de un vistazo. Se deja desplazar sola en un celular angosto en
+   vez de romper el ancho. */
+.tabla-ab { display: block; overflow-x: auto; width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.tabla-ab th, .tabla-ab td { border-bottom: 1px solid var(--border); padding: 7px 10px; text-align: right; }
+.tabla-ab th:first-child, .tabla-ab td:first-child { text-align: left; }
+.tabla-ab th { color: var(--text-muted); font-weight: 550; white-space: nowrap; }
+.tabla-ab td { font-variant-numeric: tabular-nums; }

@@ -12,6 +12,7 @@ import { ReviewForm, ReviewList } from '../../components/Reviews.js';
 import { Badge3D, EmptyState, ErrorState, Spinner, Stars } from '../../components/ui.js';
 import { AnalyticsEvent, track, trackOnce } from '../../lib/analytics.js';
 import { publicApi } from '../../lib/api.js';
+import { getGuestId } from '../../lib/session.js';
 import { money } from '../../lib/format.js';
 import { allergenLabel, dietLabel } from '../../lib/i18n.js';
 import { useAsync } from '../../lib/useAsync.js';
@@ -27,7 +28,7 @@ export function DishPage(): ReactNode {
   const toast = useToast();
 
   const { data: dish, loading, error, reload } = useAsync(
-    (signal) => publicApi.dish(slug, dishId, locale, signal),
+    (signal) => publicApi.dish(slug, dishId, locale, signal, getGuestId()),
     [slug, dishId, locale],
   );
 

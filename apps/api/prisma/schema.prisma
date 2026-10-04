@@ -100,6 +100,7 @@ model Tenant {
   events       AnalyticsEvent[]
   loyaltyAccounts LoyaltyAccount[]
   qrCodes      QrCode[]
+  experiments  Experiment[]
 
   @@index([isActive])
 }
@@ -296,6 +297,7 @@ model Dish {
   reviews      Review[]
   orderItems   OrderItem[]
   events       AnalyticsEvent[]
+  experiments  Experiment[]
   pairingsFrom Pairing[] @relation("PairingSource")
   pairingsTo   Pairing[] @relation("PairingTarget")
 
@@ -460,6 +462,14 @@ model OrderItem {
   unitPriceCents Int
   quantity       Int    @default(1)
   notes          String?
+  /// Variante del experimento con la que se COBRO esta linea (A | B).
+  ///
+  /// Se guarda aunque se pueda deducir del `guestId` del pedido, por dos
+  /// motivos: el borrado de datos del comensal pone ese guestId en null —y ahi
+  /// el pedido quedaria sin atribuir— y si alguna vez cambia la funcion de
+  /// asignacion, los pedidos viejos seguirian diciendo la verdad. Lo que se
+  /// cobro no se deduce: se registra.
+  variant        String?
 
   @@index([orderId])
   @@index([dishId])
@@ -505,6 +515,14 @@ model AnalyticsEvent {
   durationMs Int?
   /// Termino buscado (solo en eventos SEARCH).
   query     String?
+  /// Variante del experimento que el dispositivo tenia servida (A | B).
+  ///
+  /// La manda el cliente, y no se deduce en el servidor a proposito: deducirla
+  /// exigiria recibir el `guestId` junto con el evento, y que ese vinculo NO
+  /// exista es lo que hace que la analitica sea anonima de verdad (ver
+  /// modules/privacy/service.ts). Un bit que dice "A" o "B", compartido por
+  /// miles de dispositivos, no identifica a nadie.
+  variant   String?
   locale    String?
   /// Campo numerico generico: cantidad de resultados, centavos del pedido, ...
   value     Int?
@@ -603,4 +621,42 @@ model RevocationRequest {
   createdAt  DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// ------------------------------------------------------ PRUEBAS A/B DE CARTA
+
+/// Una prueba A/B sobre un plato: dos descripciones, o dos precios.
+///
+/// **La variante A no se guarda.** A es lo que dice el plato en la base, asi
+/// que si el restaurante le cambia el precio en medio de la prueba, el control
+/// lo sigue —que es lo que uno quiere: el plato es la verdad y el experimento
+/// es un desvio.
+///
+/// Un plato puede tener UNA prueba corriendo a la vez, y eso lo garantiza un
+/// indice unico parcial que se crea a mano en la migracion (Prisma no sabe
+/// expresarlos). Sin eso, dos pruebas sobre el mismo precio se pisan y los
+/// resultados de las dos quedan sin sentido.
+model Experiment {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  dishId   String
+  dish     Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  /// Valor de ExperimentField: DESCRIPTION | PRICE.
+  field  String
+  /// El valor de la variante B. Con PRICE son centavos en texto.
+  valueB String
+
+  /// RUNNING | STOPPED
+  status    String    @default("RUNNING")
+  startedAt DateTime  @default(now())
+  stoppedAt DateTime?
+  /// Que variante se adopto al cerrar: A | B. Null = se cerro sin decidir.
+  winner    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, status])
+  @@index([dishId])
 }

@@ -55,6 +55,9 @@ export async function ingestEvents(
       query: e.query?.slice(0, 80) ?? null,
       locale: e.locale ?? null,
       value: e.value ?? null,
+      // Solo tiene sentido con un plato: una variante sin plato no se puede
+      // atribuir a ninguna prueba.
+      variant: e.dishId && validDishIds.has(e.dishId) ? (e.variant ?? null) : null,
     })),
   });
   return result.count;

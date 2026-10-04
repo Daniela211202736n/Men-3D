@@ -4,7 +4,7 @@
  * La busqueda se debouncea 260 ms: escribir "milanesa" son ocho pulsaciones y no
  * tiene sentido pegarle ocho veces al servidor desde un celular.
  */
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { DishDto } from '@men3d/shared';
@@ -17,7 +17,9 @@ import {
   type FilterValue,
 } from '../../components/FilterSheet.js';
 import { EmptyState, ErrorState, SearchIcon, Spinner, Stars } from '../../components/ui.js';
+import { setVariantesServidas } from '../../lib/analytics.js';
 import { publicApi } from '../../lib/api.js';
+import { getGuestId } from '../../lib/session.js';
 import { useAsync, useDebounced } from '../../lib/useAsync.js';
 import { useVenue } from '../../store/venue.js';
 
@@ -43,11 +45,22 @@ export function MenuPage(): ReactNode {
           excludeAllergens: filters.excludeAllergens,
           only3d: filters.only3d || undefined,
           locale,
+          // Para que el servidor resuelva las pruebas A/B con el MISMO
+          // identificador con el que va a liquidar el pedido. Si esto no
+          // viajara, la carta mostraria el precio de control y el pedido se
+          // cobraria con la variante: el comensal pagaria algo que no vio.
+          guestId: getGuestId(),
         },
         signal,
       ),
     [slug, debouncedQuery, activeCategory, filters, locale],
   );
+
+  // La carta dice que variante le toco a cada plato; de ahi en adelante los
+  // eventos de analitica la llevan solos.
+  useEffect(() => {
+    setVariantesServidas(data?.experiments ?? {});
+  }, [data]);
 
   const grouped = useMemo(() => {
     if (!data) return [];

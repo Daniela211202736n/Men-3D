@@ -140,6 +140,14 @@ export interface MenuFilters {
   only3d?: boolean;
   locale?: string;
   sessionId?: string;
+  /**
+   * El dispositivo, solo para resolver las pruebas A/B.
+   *
+   * El servidor no lo guarda ni lo registra: entra, decide una variante y se
+   * descarta. Va aca y no en una cabecera para que quede a la vista de
+   * cualquiera que mire la peticion.
+   */
+  guestId?: string;
   /** Firma de indice: permite pasar el objeto tal cual como query string. */
   [key: string]: string | number | boolean | string[] | undefined;
 }
@@ -153,9 +161,18 @@ export const publicApi = {
   menu: (slug: string, filters: MenuFilters = {}, signal?: AbortSignal) =>
     request<MenuResponse>(`/api/public/${slug}/menu`, { query: filters, signal }),
 
-  dish: (slug: string, dishId: string, locale?: string, signal?: AbortSignal) =>
+  dish: (
+    slug: string,
+    dishId: string,
+    locale?: string,
+    signal?: AbortSignal,
+    guestId?: string,
+  ) =>
     request<DishDto>(`/api/public/${slug}/dishes/${dishId}`, {
-      query: { locale },
+      // El guestId va por el mismo motivo que en la carta: la ficha del plato
+      // tiene que mostrar el mismo precio que la carta, y el que se va a
+      // cobrar.
+      query: { locale, guestId },
       signal,
     }),
 
@@ -546,7 +563,58 @@ export const adminApi = {
       body: { targetLocale, overwrite },
       auth: true,
     }),
+
+  // --- pruebas A/B de carta ---
+
+  experiments: (signal?: AbortSignal) =>
+    request<ExperimentResultDto[]>('/api/admin/experiments', { auth: true, signal }),
+
+  createExperiment: (body: { dishId: string; field: string; valueB: string }) =>
+    request<ExperimentResultDto>('/api/admin/experiments', {
+      method: 'POST',
+      body,
+      auth: true,
+    }),
+
+  /** `winner: 'B'` adopta el valor de B en el plato; sin ganadora solo cierra. */
+  stopExperiment: (id: string, winner?: 'A' | 'B') =>
+    request<ExperimentResultDto>(`/api/admin/experiments/${id}/stop`, {
+      method: 'POST',
+      body: winner ? { winner } : {},
+      auth: true,
+    }),
 };
+
+/** Lo que devuelve el backend por cada prueba. Ver experiments/resultados.ts. */
+export interface ExperimentVariantDto {
+  variant: 'A' | 'B';
+  valor: string;
+  vistas: number;
+  alCarrito: number;
+  pedidos: number;
+  ingresoCents: number;
+  conversion: number | null;
+  ingresoPorVistaCents: number | null;
+}
+
+export interface ExperimentResultDto {
+  id: string;
+  dishId: string;
+  dishName: string;
+  field: 'DESCRIPTION' | 'PRICE';
+  status: 'RUNNING' | 'STOPPED';
+  startedAt: string;
+  stoppedAt: string | null;
+  winner: 'A' | 'B' | null;
+  variantes: [ExperimentVariantDto, ExperimentVariantDto];
+  veredicto: {
+    clase: 'sin-datos' | 'falta-muestra' | 'sin-diferencia' | 'gana';
+    mensaje: string;
+    ganadora?: 'A' | 'B';
+    valorP?: number;
+  };
+  avisoDePrecio: boolean;
+}
 
 /**
  * Descarga del PDF de QR. Va por `fetch` en vez de un `<a download>` porque la

@@ -21,6 +21,7 @@ import {
   EMPTY_RATING,
   type RatingIndex,
 } from '../../lib/serialize.js';
+import { aplicarVariantes, desvioPara, experimentosActivos } from '../experiments/service.js';
 import { prisma } from '../../prisma.js';
 import type { PublicTenant } from '../../plugins/tenant.js';
 import { getTenantFeatures } from '../../plugins/auth.js';
@@ -259,6 +260,14 @@ export interface MenuResult extends MenuDto {
 export async function getMenu(
   tenant: PublicTenant,
   query: MenuQuery,
+  /**
+   * El dispositivo, para resolver las pruebas A/B.
+   *
+   * Opcional: sin el se sirve la variante A, que es lo que dice el plato en la
+   * base. Es la unica respuesta segura cuando no hay con que asignar —y la
+   * correcta para cualquier cosa que lea la carta sin ser un comensal.
+   */
+  guestId?: string,
 ): Promise<MenuResult> {
   const features = await getTenantFeatures(tenant.id);
   const enabledLocales = (tenant.enabledLocales || DEFAULT_LOCALE)
@@ -322,15 +331,27 @@ export async function getMenu(
     }),
   );
 
+  // Las pruebas A/B se aplican al final, sobre los DTO ya traducidos: lo que
+  // cambia una prueba es lo que el comensal ve, no lo que el plato es. Y se
+  // aplica con la MISMA funcion que usa `createOrder` para poner el precio
+  // —ver experiments/service.ts— porque el comensal tiene que pagar lo que vio.
+  const experimentos = await experimentosActivos(tenant.id);
+  const { platos: conVariantes, asignaciones } = aplicarVariantes(
+    dishDtos,
+    experimentos,
+    guestId,
+  );
+
   return {
     venue: toVenueDto(tenant, venueRating, features),
     // Se ocultan las categorias que quedaron vacias tras aplicar los filtros.
     categories: categories
       .map((c) => toCategoryDto(c, locale, dishesByCategory.get(c.id) ?? 0))
       .filter((c) => c.dishCount > 0 || !hasFilters(query)),
-    dishes: dishDtos,
+    dishes: conVariantes,
     locale,
-    matchCount: dishDtos.length,
+    experiments: asignaciones,
+    matchCount: conVariantes.length,
   };
 }
 
@@ -348,6 +369,8 @@ export async function getDishDetail(
   tenant: PublicTenant,
   dishId: string,
   localeParam: string | undefined,
+  /** El dispositivo, para las pruebas A/B. Ver la nota en `getMenu`. */
+  guestId?: string,
 ): Promise<DishDto | null> {
   const enabledLocales = (tenant.enabledLocales || DEFAULT_LOCALE)
     .split(',')
@@ -370,7 +393,7 @@ export async function getDishDetail(
     _count: { _all: true },
   });
 
-  return toDishDto(dish, {
+  const dto = toDishDto(dish, {
     currency: tenant.currency,
     locale,
     sourceLocale,
@@ -380,6 +403,23 @@ export async function getDishDetail(
         )
       : EMPTY_RATING,
   });
+
+  // La ficha del plato tiene que mostrar lo mismo que la carta: si la carta le
+  // mostro $6.900 y al abrir el plato dice $5.900, el comensal no sabe cual es
+  // y el experimento esta midiendo confusion.
+  const experimento = (await experimentosActivos(tenant.id)).get(dish.id);
+  const resultado = desvioPara(experimento, guestId);
+  if (!resultado) return dto;
+
+  return {
+    ...dto,
+    ...(resultado.desvio.description !== undefined
+      ? { description: resultado.desvio.description }
+      : {}),
+    ...(resultado.desvio.priceCents !== undefined
+      ? { priceCents: resultado.desvio.priceCents }
+      : {}),
+  };
 }
 
 export { dishInclude };

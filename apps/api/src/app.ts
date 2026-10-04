@@ -27,6 +27,7 @@ import assetRoutes from './modules/assets/routes.js';
 import authRoutes from './modules/auth/routes.js';
 import kdsStreamRoutes from './modules/orders/kds.routes.js';
 import paymentWebhookRoutes from './modules/payments/routes.js';
+import experimentRoutes from './modules/experiments/routes.js';
 import revocationRoutes from './modules/revocation/routes.js';
 import billingRoutes, {
   billingWebhookRoutes,
@@ -110,6 +111,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       await instance.register(adminOperationsRoutes);
       await instance.register(adminInsightsRoutes);
       await instance.register(adminTeamRoutes);
+      await instance.register(experimentRoutes);
       await instance.register(billingRoutes);
     },
     { prefix: '/api/admin' },

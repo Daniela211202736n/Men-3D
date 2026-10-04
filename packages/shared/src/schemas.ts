@@ -256,6 +256,15 @@ export const analyticsEventInputSchema = z.object({
   query: z.string().max(80).optional(),
   locale: localeSchema.optional(),
   value: z.number().int().optional(),
+  /**
+   * Variante de la prueba A/B que el cliente tenia servida para ese plato.
+   *
+   * La manda el cliente porque el servidor no puede deducirla: deducirla
+   * exigiria recibir el `guestId` con el evento, y que ese vinculo no exista es
+   * lo que hace que la analitica sea anonima de verdad. Un cliente podria
+   * mentir, pero solo ensuciaria su propio balde y no tiene ningun incentivo.
+   */
+  variant: z.enum(['A', 'B']).optional(),
 });
 export type AnalyticsEventInput = z.infer<typeof analyticsEventInputSchema>;
 
@@ -316,3 +325,34 @@ export const revocationRequestSchema = z.object({
   detail: z.string().trim().max(2000).optional(),
 });
 export type RevocationRequestInput = z.infer<typeof revocationRequestSchema>;
+
+/* ------------------------------------------------ pruebas A/B de carta */
+
+/**
+ * Crear una prueba A/B sobre un plato.
+ *
+ * La variante A no se manda: A es lo que dice el plato en la base. Solo se
+ * declara el desvio.
+ */
+export const experimentCreateSchema = z
+  .object({
+    dishId: cuid,
+    field: z.enum(['DESCRIPTION', 'PRICE']),
+    /** Con PRICE, centavos. Con DESCRIPTION, el texto alternativo. */
+    valueB: z.string().trim().min(1).max(600),
+  })
+  .refine(
+    (v) => v.field !== 'PRICE' || /^[0-9]+$/.test(v.valueB),
+    { message: 'con PRICE, valueB son centavos (solo digitos)', path: ['valueB'] },
+  );
+export type ExperimentCreateInput = z.infer<typeof experimentCreateSchema>;
+
+/** Cerrar una prueba, adoptando o no la variante B. */
+export const experimentStopSchema = z.object({
+  /**
+   * `B` aplica el valor de B al plato de verdad y cierra. `A` cierra sin tocar
+   * nada. Sin ganadora, cierra y queda el historial.
+   */
+  winner: z.enum(['A', 'B']).optional(),
+});
+export type ExperimentStopInput = z.infer<typeof experimentStopSchema>;
