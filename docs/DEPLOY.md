@@ -359,7 +359,36 @@ CDN_PUBLIC_URL=https://cdn.tu-dominio.com
 
 ## Comprobar que quedó bien configurado
 
-Dos sondas que dicen qué falta, nunca qué hay:
+### Un comando, antes de darle la dirección al primer restaurante
+
+```bash
+npm run verificar:prod -w @men3d/api          # dentro de la imagen
+npm run verificar                             # desde el fuente, en desarrollo
+npm run verificar -- --enviar-a vos@dominio   # y manda un correo de prueba
+```
+
+**Habla con los servicios de verdad**, que es la diferencia con mirar si las
+variables están puestas: una variable con el valor equivocado se ve exactamente
+igual que una correcta. Verifica, en este orden:
+
+| Qué | Cómo |
+| --- | --- |
+| Base de datos | Conecta, las migraciones corrieron y el catálogo de planes está cargado. |
+| MercadoPago | Pregunta a su API quién es el dueño del token. Avisa **en rojo** si es un token `TEST-` y `NODE_ENV=production`: con ese token los cobros "funcionan" y no entra un peso. |
+| Resend | Valida la clave y comprueba que el dominio de `MAIL_FROM` esté **verificado**, que es el fallo que rechaza cada envío sin que nadie lo mire. |
+| Bucket S3 | Hace el viaje completo: firma el permiso, sube con la URL firmada, **lee por la URL pública** —la que termina en el celular del comensal— y borra. Comprueba que el borrado pasó de verdad, no que no haya dado error. |
+| Redis | Conecta y responde. |
+
+Lo que **no** hace es cobrar: una transacción real hay que hacerla a mano una
+vez, y está en [LANZAMIENTO.md](LANZAMIENTO.md).
+
+Sale con código distinto de cero si algo falla, así que sirve en un pipeline de
+despliegue. Los avisos (`!`) no lo hacen fallar: son cosas que funcionan y
+conviene saber, como que no haya CDN delante del bucket.
+
+### Las sondas, para un monitor
+
+Dicen qué falta, nunca qué hay:
 
 ```bash
 curl https://tu-api/api/payments/webhook/mercadopago/health

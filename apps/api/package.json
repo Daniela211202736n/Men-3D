@@ -13,6 +13,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:plans": "tsx src/cli/sembrar-planes.ts",
     "db:plans:prod": "node dist/cli/sembrar-planes.js",
+    "verificar": "tsx src/cli/verificar-credenciales.ts",
+    "verificar:prod": "node dist/cli/verificar-credenciales.js",
     "db:studio": "prisma studio",
     "test": "AUTH_RATE_LIMIT_MAX=1000 node --test --import tsx test/*.test.ts",
     "db:deploy": "prisma migrate deploy",

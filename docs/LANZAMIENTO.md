@@ -124,9 +124,11 @@ Para el primer cliente, un VPS alcanza y sobra.
    deshabilitados —ver [DEPLOY.md § Migraciones](DEPLOY.md).
 4. **Las imágenes.** `docker compose -f docker-compose.yml -f docker-compose.apps.yml build`
    y publicalas en un registro.
-5. **Levantar y comprobar.** Las sondas de
-   [DEPLOY.md § Comprobar que quedó bien configurado](DEPLOY.md) dicen qué
-   falta, nunca qué hay.
+5. **Levantar y comprobar.** `npm run verificar:prod -w @men3d/api` dentro de
+   la imagen: habla con MercadoPago, Resend y el bucket de verdad y te dice qué
+   anda y qué falta, con el arreglo de cada cosa. Es el momento de correrlo
+   —antes de darle la dirección al primer restaurante, no después. Ver
+   [DEPLOY.md § Comprobar que quedó bien configurado](DEPLOY.md).
 6. **El respaldo programado.** `scripts/backup.sh` en un cron, y
    **sincronizá las copias fuera de esa máquina**: una copia en el mismo disco
    que la base no sobrevive a lo que más probablemente pase.
