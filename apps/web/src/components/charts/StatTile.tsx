@@ -24,7 +24,10 @@ export function StatTile({
   return (
     <div className="card card-pad stack" style={{ gap: 6 }}>
       <span className="small secondary">{label}</span>
-      <span style={{ fontSize: '1.68rem', fontWeight: 700, lineHeight: 1.1 }}>
+      {/* El tamaño se adapta al ancho de la tarjeta: un importe de siete
+          digitos y un "33,6%" no pueden pedir la misma caja, y lo que no entra
+          no se recorta —se lee mal un numero al que le falta el final—. */}
+      <span className="stat-valor" title={value}>
         {value}
       </span>
       {delta && delta.value !== 0 && (

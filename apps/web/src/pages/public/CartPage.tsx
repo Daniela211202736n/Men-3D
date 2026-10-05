@@ -10,7 +10,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { LOYALTY_POINTS, computeOrderTotals } from '@men3d/shared';
 
-import { EmptyState, QuantityStepper, Spinner } from '../../components/ui.js';
+import { EmptyState, Miniatura, QuantityStepper, Spinner } from '../../components/ui.js';
 import { AnalyticsEvent, track } from '../../lib/analytics.js';
 import { ApiError, publicApi } from '../../lib/api.js';
 import { money } from '../../lib/format.js';
@@ -130,16 +130,22 @@ export function CartPage(): ReactNode {
       )}
 
       <ul className="stack stack-3" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        {/* Con foto. El carrito es la ultima pantalla antes de pagar y hasta
+            aca el plato se veia; que desaparezca justo donde se confirma es
+            perder lo unico que la carta tenia para mostrar. */}
         {cart.lines.map((line) => (
-          <li key={line.dishId} className="card card-pad row-between">
+          <li key={line.dishId} className="card card-pad linea-pedido">
+            <Miniatura src={line.imageUrl} size={64} radius={10} />
             <div className="stack grow" style={{ gap: 2, minWidth: 0 }}>
-              <span className="bold small truncate">{line.name}</span>
+              <span className="dish-name" style={{ fontSize: '0.98rem' }}>
+                {line.name}
+              </span>
               <span className="tiny muted nums">
                 {money(line.priceCents, venue.currency, locale)} {t('common.of')} unidad
               </span>
               {line.notes && <span className="tiny muted">{line.notes}</span>}
             </div>
-            <div className="stack" style={{ alignItems: 'flex-end', gap: 6 }}>
+            <div className="stack" style={{ alignItems: 'flex-end', gap: 8 }}>
               <span className="small bold nums">
                 {money(line.priceCents * line.quantity, venue.currency, locale)}
               </span>
@@ -220,7 +226,7 @@ export function CartPage(): ReactNode {
         </label>
       )}
 
-      <div className="card card-pad stack stack-2">
+      <div className="card card-pad stack stack-2 resumen">
         <Row label={t('cart.subtotal')} value={money(totals.subtotalCents, venue.currency, locale)} />
         {totals.discountCents > 0 && (
           <Row
@@ -237,7 +243,7 @@ export function CartPage(): ReactNode {
         <hr className="divider" />
         <div className="row-between">
           <span className="bold">{t('cart.total')}</span>
-          <span className="bold nums" style={{ fontSize: '1.15rem' }}>
+          <span className="total-grande nums">
             {money(totals.totalCents, venue.currency, locale)}
           </span>
         </div>

@@ -14,6 +14,26 @@ export function money(cents: number, currency: string, locale = 'es'): string {
   return formatMoney(cents, currency, INTL_LOCALE[locale] ?? 'es-AR');
 }
 
+/**
+ * Importe sin centavos, para los indicadores del panel.
+ *
+ * La facturacion de un mes en pesos argentinos son siete u ocho digitos. Con
+ * los centavos, "$ 3.216.418,37" a 1,68 rem no entra en una tarjeta de 158 px y
+ * se cortaba contra el borde: el dueño veia "$ 3.216.418,3". Los centavos de un
+ * acumulado mensual no le dicen nada a nadie; los digitos que faltan, si.
+ */
+export function moneyRound(cents: number, currency: string, locale = 'es'): string {
+  try {
+    return new Intl.NumberFormat(INTL_LOCALE[locale] ?? 'es-AR', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    }).format(Math.round(cents / 100));
+  } catch {
+    return money(cents, currency, locale);
+  }
+}
+
 /** Numeros grandes compactos para los indicadores del panel: 12,9 mil. */
 export function compactNumber(value: number, locale = 'es'): string {
   return new Intl.NumberFormat(INTL_LOCALE[locale] ?? 'es-AR', {

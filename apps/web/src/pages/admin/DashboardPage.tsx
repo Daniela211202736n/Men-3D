@@ -13,7 +13,7 @@ import { StatTile } from '../../components/charts/StatTile.js';
 import { TrendChart } from '../../components/charts/TrendChart.js';
 import { ErrorState, Spinner } from '../../components/ui.js';
 import { adminApi } from '../../lib/api.js';
-import { compactNumber, integer, money, percent } from '../../lib/format.js';
+import { compactNumber, integer, moneyRound, percent } from '../../lib/format.js';
 import { useAsync } from '../../lib/useAsync.js';
 
 const RANGES = [
@@ -61,7 +61,7 @@ export function DashboardPage(): ReactNode {
       <div className="grid-stats">
         <StatTile
           label="Facturacion"
-          value={money(totals.revenueCents, data.currency)}
+          value={moneyRound(totals.revenueCents, data.currency)}
           hint={`${integer(totals.orders)} pedidos`}
         />
         <StatTile
@@ -89,7 +89,7 @@ export function DashboardPage(): ReactNode {
           value={
             totals.orders === 0
               ? '—'
-              : money(Math.round(totals.revenueCents / totals.orders), data.currency)
+              : moneyRound(Math.round(totals.revenueCents / totals.orders), data.currency)
           }
         />
       </div>

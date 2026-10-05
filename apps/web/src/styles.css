@@ -804,3 +804,134 @@ table.data tbody tr:hover { background: var(--surface-2); }
 .tabla-ab th:first-child, .tabla-ab td:first-child { text-align: left; }
 .tabla-ab th { color: var(--text-muted); font-weight: 550; white-space: nowrap; }
 .tabla-ab td { font-variant-numeric: tabular-nums; }
+
+/* ===========================================================================
+   Portada
+   ---------------------------------------------------------------------------
+   La pagina que vende "ver el plato antes de pedirlo" no tenia un plato. Los
+   renders de los modelos salen con fondo transparente: apilados con su sombra
+   arman una escena, y el degradado de abajo es la mesa sobre la que apoyan —sin
+   el, flotan sobre el gris de la pagina y se nota que son recortes.
+   =========================================================================== */
+.hero { display: grid; gap: 22px; grid-template-columns: 1fr; align-items: center; }
+.hero-titulo { font-size: clamp(1.75rem, 7.2vw, 2.6rem); line-height: 1.12; text-wrap: balance; }
+.hero-bajada { max-width: 46ch; }
+
+.escena { position: relative; height: 230px; }
+.escena::before {
+  content: '';
+  position: absolute; inset: auto 6% 2% 6%; height: 42%;
+  background: radial-gradient(
+    58% 100% at 50% 100%,
+    color-mix(in srgb, var(--text-primary) 9%, transparent),
+    transparent 72%
+  );
+  border-radius: 50%;
+}
+.escena-foto {
+  position: absolute; height: auto;
+  filter: drop-shadow(0 14px 18px rgb(11 11 11 / 16%));
+}
+.escena-foto:nth-of-type(1) { width: 66%; left: 0; bottom: 0; z-index: 3; }
+.escena-foto:nth-of-type(2) { width: 38%; right: 1%; bottom: 7%; z-index: 2; }
+.escena-foto:nth-of-type(3) { width: 40%; right: 22%; top: 0; z-index: 1; }
+
+@media (min-width: 860px) {
+  .hero { grid-template-columns: 1.05fr 1fr; gap: 36px; }
+  .escena { height: 340px; }
+}
+
+/* Lo que incluye: tarjetas y no una lista corrida. Seis pares de titulo y
+   parrafo seguidos se leen como un unico bloque de texto; separados, se
+   escanean. El filete al costado usa la marca sin pintar la tarjeta entera. */
+.rejilla-features {
+  display: grid; gap: 10px; grid-template-columns: 1fr;
+  list-style: none; margin: 0; padding: 0;
+}
+@media (min-width: 640px) { .rejilla-features { grid-template-columns: 1fr 1fr; } }
+.feature {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 14px 16px;
+  background: var(--surface-1);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  border-left: 3px solid color-mix(in srgb, var(--brand) 55%, transparent);
+}
+.feature-titulo {
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 18, 'SOFT' 0;
+  font-weight: 600; font-size: 1rem; line-height: 1.25;
+}
+
+/* Tarjeta que es un enlace: se levanta al pasar por encima y la flecha avanza.
+   Es la unica señal de que la tarjeta entera es tocable. */
+.tarjeta-enlace { transition: transform 160ms ease, box-shadow 160ms ease; }
+.tarjeta-enlace:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
+.tarjeta-enlace .flecha {
+  color: var(--text-muted);
+  transition: transform 160ms ease, color 160ms ease;
+}
+.tarjeta-enlace:hover .flecha { transform: translateX(3px); color: var(--brand); }
+
+/* ===========================================================================
+   Carrito y seguimiento
+   =========================================================================== */
+.linea-pedido { display: flex; align-items: center; gap: 12px; }
+
+/* El bloque de totales se separa del resto con un paso de superficie: es el
+   numero que se mira antes de pagar y no puede pesar lo mismo que un campo. */
+.resumen { background: linear-gradient(180deg, var(--surface-1), var(--surface-2)); }
+.total-grande {
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 28, 'SOFT' 0;
+  font-weight: 700; font-size: 1.34rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Linea de tiempo del pedido. El riel entre las marcas es lo que convierte
+   cinco renglones en un progreso; el halo del color del fondo lo corta en cada
+   marca para que no la atraviese. */
+.pasos { list-style: none; margin: 0; padding: 0; }
+.paso { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+.paso:not(:last-child)::before {
+  content: '';
+  position: absolute; left: 11px; top: 50%; bottom: -50%;
+  width: 2px; background: var(--surface-3);
+}
+.paso.is-hecho:not(:last-child)::before {
+  background: color-mix(in srgb, var(--brand) 45%, var(--surface-3));
+}
+.paso-marca {
+  position: relative; z-index: 1;
+  width: 24px; height: 24px; border-radius: 50%; flex: 0 0 auto;
+  display: grid; place-items: center;
+  font-size: 11px; font-weight: 650;
+  color: var(--text-muted); background: var(--surface-3);
+  /* Halo del color del fondo: corta el riel justo alrededor de la marca. Dos
+     pixeles y no tres —con tres, lo que queda de riel entre dos marcas es tan
+     corto que la linea se lee punteada. */
+  box-shadow: 0 0 0 2px var(--surface-0);
+}
+.paso.is-hecho .paso-marca { color: var(--brand-ink); background: var(--brand); }
+.paso-texto { color: var(--text-secondary); }
+.paso.is-actual .paso-texto { color: var(--text-primary); font-weight: 650; }
+
+/* ===========================================================================
+   Panel
+   =========================================================================== */
+/* El valor del indicador se adapta al ancho de la tarjeta. Un importe de siete
+   digitos y un "33,6%" no pueden pedir la misma caja: con un tamaño fijo, la
+   facturacion del mes se cortaba contra el borde y el dueño leia un numero al
+   que le faltaba el final. */
+.stat-valor {
+  font-size: clamp(1.15rem, 5vw, 1.6rem);
+  font-weight: 700; line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tarjeta-enlace,
+  .tarjeta-enlace .flecha { transition: none; }
+  .tarjeta-enlace:hover { transform: none; }
+  .tarjeta-enlace:hover .flecha { transform: none; }
+}
