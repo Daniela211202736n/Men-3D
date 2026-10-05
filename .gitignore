@@ -16,6 +16,15 @@ coverage/
 apps/api/prisma/dev.db*
 
 # generated assets
+# Los GLB se generan en cada entorno (scripts/generate-sample-models.mjs), asi
+# que no se versionan.
+#
+# Los PNG de al lado SI, y es la unica excepcion a "no versionar binarios" del
+# repositorio. El motivo: se renderizan abriendo el modelo en un navegador, y la
+# imagen de la PWA se compila sin navegador. Sin versionarlos, la demostracion
+# en contenedor se queda sin fotos —que es justo lo que estas imagenes vinieron
+# a arreglar—. Son 500 kB, se regeneran con `npm run models:sample` y entran al
+# diff cuando cambia un modelo, que es poco mas que nunca.
 apps/web/public/models/*.glb
 apps/web/dev-dist/
 apps/api/storage/

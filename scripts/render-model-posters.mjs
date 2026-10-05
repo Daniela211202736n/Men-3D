@@ -32,8 +32,15 @@ const VIEWER = join(
   'node_modules/@google/model-viewer/dist/model-viewer-umd.min.js',
 );
 
-/** Lado del PNG. 720 da nitidez en una miniatura de 160 px a 3x. */
-const LADO = 720;
+/**
+ * Lado del PNG.
+ *
+ * 512 y no mas: la miniatura de la carta mide 112 px, asi que 512 ya son 4,5x
+ * —de sobra en cualquier pantalla— y a 720 cada archivo pesaba el doble sin que
+ * se note la diferencia. Estas imagenes se versionan (ver el README del
+ * script), y un binario versionado que pesa de mas lo paga todo el que clone.
+ */
+const LADO = 512;
 
 const TIPOS = {
   '.glb': 'model/gltf-binary',
