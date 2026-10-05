@@ -9,14 +9,47 @@
         (ver docs/ARCHITECTURE.md, "Paleta de datos").
    =========================================================================== */
 
+/* ---------------------------------------------------------------------------
+   Fraunces, la tipografia de los nombres y los titulos.
+   ---------------------------------------------------------------------------
+   Por que una serif y no la de interfaz: con Inter en todos lados, una carta de
+   restaurante se lee como un panel de administracion. Los nombres de los platos
+   son el contenido, no etiquetas de formulario, y una serif con caracter es lo
+   que separa "una aplicacion que muestra comida" de "una carta".
+
+   Y por que AUTO-HOSPEDADA y no enlazada a Google Fonts, que es un `<link>` y
+   se acaba:
+     1. la CSP solo permite `font-src 'self'`, y aflojarla por una fuente es
+        aflojarla;
+     2. la politica de privacidad enumera exactamente cinco terceros que reciben
+        algo del comensal —agregar uno la dejaria mintiendo, y Google veria la
+        IP de cada persona que abre una carta;
+     3. es mas rapido: ni DNS ni TLS contra otro dominio en el camino critico.
+
+   Es la variable con eje optico, 67 kB en el subconjunto latino. `swap` para
+   que el texto se lea desde el primer frame aunque la fuente llegue tarde. */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/fraunces-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   color-scheme: light;
 
   /* --- superficies e ink ------------------------------------------------- */
-  --surface-0: #f4f3f0;
-  --surface-1: #fcfcfb;
-  --surface-2: #f0efec;
-  --surface-3: #e5e4e0;
+  /* El fondo baja un paso y la tarjeta sube a blanco. Estaban a 8 puntos de
+     distancia y con la sombra suave las tarjetas no llegaban a despegarse: la
+     pagina entera se leia como una sola lamina. */
+  --surface-0: #eeece8;
+  --surface-1: #ffffff;
+  --surface-2: #f2f1ed;
+  --surface-3: #e4e2dd;
   --border: #d8d7d2;
   --border-strong: #bdbcb6;
   --text-primary: #0b0b0b;
@@ -51,10 +84,25 @@
   --radius-sm: 8px;
   --radius: 14px;
   --radius-lg: 22px;
-  --shadow-1: 0 1px 2px rgb(11 11 11 / 6%), 0 2px 8px rgb(11 11 11 / 4%);
-  --shadow-2: 0 2px 6px rgb(11 11 11 / 8%), 0 12px 28px rgb(11 11 11 / 8%);
+  /* Tres capas y no una: una sombra sola a baja opacidad se ve sucia, no
+     elevada. El contacto define el borde, la media da volumen y la lejana
+     separa del fondo. Es lo que hace que una tarjeta este SOBRE la pagina en
+     vez de dibujada EN la pagina. */
+  --shadow-1:
+    0 1px 1px rgb(11 11 11 / 4%),
+    0 2px 4px rgb(11 11 11 / 5%),
+    0 8px 16px -8px rgb(11 11 11 / 8%);
+  --shadow-2:
+    0 1px 2px rgb(11 11 11 / 6%),
+    0 6px 12px -2px rgb(11 11 11 / 8%),
+    0 24px 40px -12px rgb(11 11 11 / 14%);
   --font: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     'Helvetica Neue', sans-serif;
+  /* Los nombres y los titulos. La cascada de respaldo son serifs que existen en
+     todos los sistemas, asi que si la fuente no llega el caracter se mantiene y
+     no cae a la de interfaz. */
+  --font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia,
+    'Times New Roman', serif;
   /* Zona segura del notch y de la barra inferior del iPhone. */
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
@@ -138,10 +186,18 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
-h1, h2, h3, h4 { margin: 0; line-height: 1.2; letter-spacing: -0.01em; }
-h1 { font-size: 1.6rem; font-weight: 700; }
-h2 { font-size: 1.22rem; font-weight: 650; }
-h3 { font-size: 1.02rem; font-weight: 600; }
+h1, h2, h3, h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  line-height: 1.18;
+  letter-spacing: -0.005em;
+  /* El eje optico de Fraunces: a tamaño de titulo conviene mas contraste y
+     remates mas finos que a tamaño de texto. */
+  font-variation-settings: 'opsz' 48, 'SOFT' 20;
+}
+h1 { font-size: 1.65rem; font-weight: 600; }
+h2 { font-size: 1.3rem; font-weight: 600; }
+h3 { font-size: 1.05rem; font-weight: 600; }
 p { margin: 0; line-height: 1.55; }
 a { color: var(--brand); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -257,8 +313,12 @@ img { max-width: 100%; display: block; }
   padding: 7px 13px;
   min-height: 36px;
   border-radius: 999px;
-  border: 1px solid var(--border-strong);
-  background: var(--surface-1);
+  /* Relleno en vez de contorno. Entre las pestañas, los filtros y las
+     categorias habia seis pildoras delineadas en la primera pantalla, y seis
+     contornos compiten entre si y con las tarjetas. El borde queda solo para
+     la que esta activa, que es la unica que tiene que destacarse. */
+  border: 1px solid transparent;
+  background: var(--surface-2);
   color: var(--text-secondary);
   cursor: pointer;
   white-space: nowrap;
@@ -266,10 +326,12 @@ img { max-width: 100%; display: block; }
   align-items: center;
   gap: 6px;
 }
+.chip:hover { background: var(--surface-3); }
 .chip[aria-pressed='true'], .chip.is-active {
   background: var(--brand);
   border-color: transparent;
   color: var(--brand-ink);
+  box-shadow: 0 1px 2px rgb(11 11 11 / 10%), 0 4px 10px -4px var(--brand);
 }
 
 .badge {
@@ -349,6 +411,16 @@ img { max-width: 100%; display: block; }
   border-radius: var(--radius);
   margin-bottom: 14px;
 }
+/* El nombre del restaurante es lo primero que se lee al escanear el QR: es el
+   lugar donde la serif mas trabaja. */
+.venue-name {
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 28, 'SOFT' 30;
+  font-size: 1.08rem;
+  font-weight: 600;
+  letter-spacing: -0.004em;
+}
+
 .venue-logo {
   width: 52px; height: 52px; border-radius: 14px; object-fit: cover;
   border: 1px solid var(--border); background: var(--surface-1); flex: 0 0 auto;
@@ -405,7 +477,20 @@ img { max-width: 100%; display: block; }
   border-radius: var(--radius);
   box-shadow: var(--shadow-1);
 }
-.dish-card:hover { border-color: var(--border-strong); }
+.dish-card {
+  /* El borde se va y queda la sombra: un borde de 1 px a todo el contorno
+     aplasta la tarjeta contra el fondo, que es de donde venia buena parte de
+     la sensacion de "plano". */
+  border-color: transparent;
+  box-shadow: var(--shadow-1);
+  transition: box-shadow 160ms ease, transform 160ms ease;
+}
+.dish-card:hover {
+  border-color: transparent;
+  box-shadow: var(--shadow-2);
+  transform: translateY(-1px);
+}
+.dish-card:active { transform: translateY(0); }
 .dish-card.is-unavailable { opacity: 0.55; }
 .dish-thumb {
   width: 112px; height: 112px; border-radius: 10px;
@@ -414,14 +499,21 @@ img { max-width: 100%; display: block; }
   background: radial-gradient(120% 100% at 50% 20%, var(--surface-1), var(--surface-2));
   object-fit: cover; position: relative;
   display: grid; place-items: center; overflow: hidden; flex: 0 0 auto;
+  /* Anillo por dentro en vez de borde por fuera: marca el limite de la foto sin
+     agregar una linea dura mas a la composicion. */
+  box-shadow: inset 0 0 0 1px rgb(11 11 11 / 6%);
 }
 /* El nombre del plato: dos lineas como maximo y peso 600, no 650. Con el precio
    al lado, dos textos del mismo peso compiten y no gana ninguno. */
 .dish-name {
+  font-family: var(--font-display);
+  /* `opsz` bajo: a 1.05rem, los remates finos de un titulo se rompen. El eje
+     optico existe justo para esto. */
+  font-variation-settings: 'opsz' 14, 'SOFT' 40;
   font-weight: 600;
-  font-size: 0.97rem;
-  line-height: 1.32;
-  letter-spacing: -0.006em;
+  font-size: 1.05rem;
+  line-height: 1.3;
+  letter-spacing: -0.003em;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -431,10 +523,12 @@ img { max-width: 100%; display: block; }
    nombre de tres palabras ocupaba tres renglones en un celular y empujaba el
    visor 3D, que es lo que la pantalla vino a mostrar. */
 .dish-title {
-  font-size: 1.28rem;
-  font-weight: 650;
-  line-height: 1.26;
-  letter-spacing: -0.012em;
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 36, 'SOFT' 30;
+  font-size: 1.42rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.008em;
 }
 .dish-price-lg {
   font-size: 1.22rem;
@@ -515,6 +609,8 @@ img { max-width: 100%; display: block; }
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
   padding-top: var(--safe-top);
+  /* La cabecera flota sobre la carta en vez de estar pegada a ella. */
+  box-shadow: 0 1px 0 var(--border), 0 6px 16px -12px rgb(11 11 11 / 22%);
 }
 .sticky-bottom {
   position: sticky; bottom: 0; z-index: 20;

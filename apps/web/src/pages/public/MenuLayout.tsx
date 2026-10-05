@@ -74,7 +74,7 @@ function MenuShell(): ReactNode {
               <img className="venue-logo" src={venue.branding.logoUrl} alt="" width={52} height={52} />
             )}
             <div className="stack grow" style={{ gap: 1, minWidth: 0 }}>
-              <strong className="truncate">{venue.name}</strong>
+              <strong className="venue-name truncate">{venue.name}</strong>
               <span className="tiny muted">
                 {table ? `${t('cart.table')} ${table}` : venue.city}
               </span>

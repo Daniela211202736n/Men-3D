@@ -11,6 +11,17 @@
       name="description"
       content="Carta digital en 3D y realidad aumentada: mira la porcion real del plato antes de pedirlo."
     />
+    <!-- La fuente de los nombres, por delante del CSS: el comensal escanea el
+         QR y lo primero que lee es el nombre del restaurante. Sin esto el
+         navegador la descubre recien al parsear la hoja de estilos y el titulo
+         salta de la serif de respaldo a la buena con la pagina ya a la vista. -->
+    <link
+      rel="preload"
+      href="/fonts/fraunces-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/icon.svg" />
     <title>Men-3D</title>
