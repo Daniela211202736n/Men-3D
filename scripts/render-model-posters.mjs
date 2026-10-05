@@ -53,10 +53,15 @@ const PAGINA = `<!doctype html>
 <html>
   <head><meta charset="utf-8"><script src="/viewer.js"></script></head>
   <body style="margin:0;background:transparent">
+    <!-- El visor dibuja su barra de progreso encima del lienzo; si no se
+         esconde queda una franja gris en la foto. -->
+    <style>
+      model-viewer::part(default-progress-bar) { display: none; }
+    </style>
     <model-viewer
       id="v"
       style="width:${LADO}px;height:${LADO}px;background:transparent"
-      camera-orbit="25deg 68deg 88%"
+      camera-orbit="22deg 62deg 102%"
       shadow-intensity="0.9"
       shadow-softness="0.8"
       exposure="1.05"
