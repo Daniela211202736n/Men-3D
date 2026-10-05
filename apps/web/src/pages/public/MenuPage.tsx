@@ -89,7 +89,6 @@ export function MenuPage(): ReactNode {
               loading="eager"
             />
           )}
-          {venue?.description && <p className="small secondary">{venue.description}</p>}
           {venue && venue.rating.count > 0 && (
             <div className="row" style={{ gap: 7 }}>
               <Stars value={venue.rating.average} size={14} />

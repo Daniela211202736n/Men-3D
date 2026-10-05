@@ -1,6 +1,6 @@
 /** Fila de la carta. Es un boton entero: en un celular todo el bloque es tocable. */
 import type { DishDto, Locale } from '@men3d/shared';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { dietLabel, type Translate } from '../lib/i18n.js';
 import { money } from '../lib/format.js';
@@ -17,6 +17,8 @@ export function DishCard({
   t: Translate;
   onOpen: (dish: DishDto) => void;
 }): ReactNode {
+  const [fotoRota, setFotoRota] = useState(false);
+
   return (
     <button
       type="button"
@@ -25,15 +27,18 @@ export function DishCard({
       aria-label={`${dish.name}, ${money(dish.priceCents, dish.currency, locale)}`}
     >
       <span className="dish-thumb">
-        {dish.imageUrl ? (
+        {dish.imageUrl && !fotoRota ? (
           <img
             src={dish.imageUrl}
             alt=""
             loading="lazy"
             decoding="async"
-            width={96}
-            height={96}
+            width={112}
+            height={112}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            // Una foto que no carga —un CDN con hipo, una URL vieja— no puede
+            // dejarle al comensal el icono de imagen rota del navegador.
+            onError={() => setFotoRota(true)}
           />
         ) : (
           // Sin foto: el icono de cubo anticipa que hay modelo 3D.
@@ -42,21 +47,7 @@ export function DishCard({
       </span>
 
       <span className="stack stack-2 grow">
-        <span className="row-between" style={{ alignItems: 'flex-start' }}>
-          <span className="bold" style={{ lineHeight: 1.3 }}>
-            {dish.name}
-          </span>
-          <span className="stack" style={{ alignItems: 'flex-end', gap: 0 }}>
-            <span className="dish-price">
-              {money(dish.priceCents, dish.currency, locale)}
-            </span>
-            {dish.compareAtPriceCents && dish.compareAtPriceCents > dish.priceCents && (
-              <span className="dish-price-old">
-                {money(dish.compareAtPriceCents, dish.currency, locale)}
-              </span>
-            )}
-          </span>
-        </span>
+        <span className="dish-name">{dish.name}</span>
 
         {dish.description && (
           <span
@@ -72,7 +63,15 @@ export function DishCard({
           </span>
         )}
 
-        <span className="row wrap" style={{ gap: 6 }}>
+        <span className="row wrap" style={{ gap: 8 }}>
+          <span className="dish-price">
+            {money(dish.priceCents, dish.currency, locale)}
+          </span>
+          {dish.compareAtPriceCents && dish.compareAtPriceCents > dish.priceCents && (
+            <span className="dish-price-old">
+              {money(dish.compareAtPriceCents, dish.currency, locale)}
+            </span>
+          )}
           {dish.has3d && <Badge3D />}
           {!dish.isAvailable && (
             <span className="badge badge-warning">{t('dish.unavailable')}</span>
@@ -85,8 +84,8 @@ export function DishCard({
               </span>
             </span>
           )}
-          {dish.dietTags.slice(0, 2).map((tag) => (
-            <span key={tag} className="badge">
+          {dish.dietTags.slice(0, 1).map((tag) => (
+            <span key={tag} className="badge badge-quiet">
               {dietLabel(tag, locale)}
             </span>
           ))}

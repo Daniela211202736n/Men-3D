@@ -287,6 +287,18 @@ img { max-width: 100%; display: block; }
   border: 1px solid var(--border);
 }
 .badge-3d { background: var(--brand-soft); color: var(--brand); border-color: transparent; }
+/* Para datos secundarios —dietas, alergenos— donde el estilo normal, en
+   mayusculas y peso 700, le da a "SIN TACC" la misma voz que al precio. */
+.badge-quiet {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: transparent;
+  border-color: var(--border);
+  padding: 2px 8px;
+}
 .badge-good { background: var(--good-soft); color: var(--good); border-color: transparent; }
 .badge-warning { background: var(--warning-soft); color: var(--warning); border-color: transparent; }
 .badge-critical { background: var(--critical-soft); color: var(--critical); border-color: transparent; }
@@ -320,11 +332,14 @@ img { max-width: 100%; display: block; }
 
 /* ------------------------------------------------------------- menu publico */
 
+/* El encabezado NO se tiñe con el color de marca.
+   Tenia un degradado que competia con las tarjetas y le robaba la primera
+   pantalla a la comida, que es lo unico que el comensal vino a ver. Queda la
+   misma superficie que el resto y una linea para separar. */
 .menu-hero {
   position: relative;
-  padding: calc(20px + var(--safe-top)) 0 18px;
-  background:
-    linear-gradient(180deg, var(--brand-soft), var(--surface-0));
+  padding: calc(16px + var(--safe-top)) 0 14px;
+  background: var(--surface-0);
   border-bottom: 1px solid var(--border);
 }
 .menu-hero-img {
@@ -374,8 +389,10 @@ img { max-width: 100%; display: block; }
 
 .dish-card {
   display: grid;
-  grid-template-columns: 96px 1fr;
-  gap: 12px;
+  /* 112 y no 96: en una carta la foto es el argumento de venta, no un adorno
+     al costado del texto. */
+  grid-template-columns: 112px 1fr;
+  gap: 14px;
   padding: 12px;
   text-align: left;
   width: 100%;
@@ -391,11 +408,48 @@ img { max-width: 100%; display: block; }
 .dish-card:hover { border-color: var(--border-strong); }
 .dish-card.is-unavailable { opacity: 0.55; }
 .dish-thumb {
-  width: 96px; height: 96px; border-radius: var(--radius-sm);
-  background: var(--surface-2); object-fit: cover; position: relative;
+  width: 112px; height: 112px; border-radius: 10px;
+  /* Degradado suave y no un gris plano: los renders de los modelos llegan con
+     fondo transparente, y sobre un plano quedan recortados contra la nada. */
+  background: radial-gradient(120% 100% at 50% 20%, var(--surface-1), var(--surface-2));
+  object-fit: cover; position: relative;
   display: grid; place-items: center; overflow: hidden; flex: 0 0 auto;
 }
-.dish-price { font-weight: 700; font-variant-numeric: tabular-nums; }
+/* El nombre del plato: dos lineas como maximo y peso 600, no 650. Con el precio
+   al lado, dos textos del mismo peso compiten y no gana ninguno. */
+.dish-name {
+  font-weight: 600;
+  font-size: 0.97rem;
+  line-height: 1.32;
+  letter-spacing: -0.006em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* El nombre en la ficha. 1.28rem y no el 1.6rem del h1 general: a 1.6 un
+   nombre de tres palabras ocupaba tres renglones en un celular y empujaba el
+   visor 3D, que es lo que la pantalla vino a mostrar. */
+.dish-title {
+  font-size: 1.28rem;
+  font-weight: 650;
+  line-height: 1.26;
+  letter-spacing: -0.012em;
+}
+.dish-price-lg {
+  font-size: 1.22rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dish-price {
+  font-weight: 650;
+  font-size: 0.96rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  /* Un pelo de aire a la derecha: pegado a la insignia 3D parecian un bloque. */
+  margin-right: 2px;
+}
 .dish-price-old {
   color: var(--text-muted); text-decoration: line-through;
   font-weight: 500; font-size: 0.85rem;

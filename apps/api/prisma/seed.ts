@@ -322,6 +322,10 @@ async function seedTenant(input: SeedTenantInput) {
           // Los GLB los genera scripts/generate-sample-models.mjs y los sirve
           // la PWA desde /models (en produccion: un CDN).
           modelGlbUrl: dish.model ? `/models/${dish.model}.glb` : null,
+          // La imagen la renderiza scripts/render-model-posters.mjs desde el
+          // propio modelo: un plato con 3D ya tiene su foto, solo habia que
+          // sacarla. Un restaurante de verdad sube la suya y pisa esta.
+          imageUrl: dish.model ? `/models/${dish.model}.png` : null,
           portionGrams: dish.portionGrams ?? null,
           calories: dish.calories ?? null,
           prepMinutes: dish.prepMinutes ?? null,

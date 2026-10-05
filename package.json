@@ -27,7 +27,7 @@
     "dev": "npm run dev -w @men3d/api & npm run dev -w @men3d/web",
     "dev:api": "npm run dev -w @men3d/api",
     "dev:web": "npm run dev -w @men3d/web",
-    "models:sample": "node scripts/generate-sample-models.mjs",
+    "models:sample": "node scripts/generate-sample-models.mjs && node scripts/render-model-posters.mjs",
     "setup": "npm install && npm run models:sample && npm run build -w @men3d/shared && npm run db:generate && npm run db:up && npm run db:deploy && npm run db:seed",
     "test": "npm run test -w @men3d/api",
     "typecheck": "npm run typecheck -w @men3d/shared && npm run typecheck -w @men3d/api && npm run typecheck -w @men3d/web",
