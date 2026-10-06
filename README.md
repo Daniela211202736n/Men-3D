@@ -62,6 +62,10 @@ docker-compose.apps.yml up -d --build` levanta todo en contenedores en
 
 - **Carta**: alta/baja de platos, precio editable en la fila, disponibilidad,
   destacados y reordenamiento.
+- **Modelo 3D sacándole una foto al plato** — se configura un generador
+  (`MODEL3D_PROVIDER`) y el modelo aparece solo un par de minutos después. Sin
+  eso, se sube un GLB hecho aparte, que es gratis y suele salir mejor si se
+  escanea con el celular. Ver [docs/DEPLOY.md](docs/DEPLOY.md).
 - **Pantalla de cocina (KDS)** en vivo por SSE.
 - **Métricas**: qué platos se miran en 3D y cuáles se venden —y los que no.
 - **QR por mesa** en PDF listo para imprimir, con conteo de escaneos.

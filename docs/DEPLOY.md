@@ -128,6 +128,52 @@ olvide la clave.
 El enlace del correo se construye sobre `PUBLIC_WEB_URL`, así que si esa
 variable está mal, los enlaces llegan apuntando a ninguna parte.
 
+### Modelos 3D a partir de una foto
+
+| Variable | Valor |
+| --- | --- |
+| `MODEL3D_PROVIDER` | `none` (por defecto) o `meshy` |
+| `MESHY_API_KEY` | Clave de la API de Meshy, si se usa ese proveedor |
+| `MESHY_AI_MODEL` | Versión del modelo: `latest` (por defecto), `meshy-6`, `meshy-5` |
+
+Con esto configurado, el restaurante le saca una foto al plato desde el panel y
+el modelo 3D aparece solo un par de minutos después. Sin esto, la función no se
+ofrece y los platos se cargan subiendo un GLB hecho aparte, que es el camino que
+no cuesta nada.
+
+**Esto cuesta plata por uso.** Cada modelo generado consume créditos del
+proveedor —del orden de 20 a 30 por plato, que a los precios de hoy son unos
+20 a 30 centavos de dólar—. Son pocos centavos por plato, pero una carta de
+sesenta platos generada dos veces ya es una cifra, y el botón está en un
+celular dentro de un restaurante. Por eso hay tres frenos y conviene conocerlos:
+
+1. La función está detrás de la *feature* `PHOTO_TO_3D`, que no incluye el plan
+   gratis.
+2. Un plato no puede tener dos modelos generándose a la vez. El guard es un
+   índice único parcial en la base (`ModelJob_uno_en_curso_por_plato`), no un
+   `if`: dos toques del botón no pueden cobrar dos veces.
+3. La ruta tiene su propio límite, más duro que el general de la API: 12 fotos
+   por hora y por IP.
+
+**El alta de la feature no es automática en una base ya desplegada.** Las
+*features* de cada plan viven en la tabla `Plan`, así que después de migrar hay
+que volver a aplicar el catálogo:
+
+```bash
+npm run db:plans:prod
+```
+
+Sin eso, el panel le dice a todos los restaurantes que la función no está en su
+plan.
+
+**La alternativa gratis, que para muchos casos da mejor resultado.** Un celular
+moderno escanea un objeto real mucho mejor de lo que cualquier modelo reconstruye
+desde una sola foto: aplicaciones como Polycam o Scaniverse —y Object Capture en
+iPhone— generan un GLB dando una vuelta alrededor del plato. Ese archivo se sube
+desde el mismo editor y no consume créditos de nadie. La foto única es para
+cuando hay sesenta platos y poco tiempo; el escaneo, para los cinco platos que
+venden.
+
 ### Pagos
 
 Ver [PAYMENTS.md](PAYMENTS.md).

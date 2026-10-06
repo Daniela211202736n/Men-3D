@@ -46,7 +46,7 @@ Mientras alguno siga vacío:
 - donde falta un dato, el texto dice **«FALTA: NOMBRE»** en lugar de inventarlo.
 
 Es deliberado: una política de privacidad a medio llenar es peor que ninguna,
-porque parece una. Hoy faltan **22** datos.
+porque parece una. Hoy faltan **23** datos.
 
 Cuando no falte ninguno, el aviso desaparece solo. Hay que acordarse de
 actualizar las dos afirmaciones del final de `e2e/legal.spec.ts`, que hoy
@@ -54,7 +54,7 @@ comprueban justamente que el aviso **está**.
 
 ---
 
-## 1. Lo que completás vos (15)
+## 1. Lo que completás vos (16)
 
 Datos y decisiones de negocio. No necesitan abogado.
 
@@ -68,6 +68,7 @@ Datos y decisiones de negocio. No necesitan abogado.
 | `FECHA_VIGENCIA` | La fecha desde la que rige la versión publicada. |
 | `VERSION` | Un número de versión, p. ej. `1.0`. Sirve para saber qué aceptó cada quien. |
 | `PROVEEDOR_ALMACENAMIENTO` | El proveedor S3 que quede configurado (`STORAGE_DRIVER=s3`). |
+| `PROVEEDOR_3D` | El generador de modelos 3D que quede configurado (`MODEL3D_PROVIDER`). Déjalo vacío si no contrataste ninguno: nombrar en una política a un tercero que no recibe nada es tan falso como omitir a uno que sí. |
 | `PLAZO_PEDIDOS` | Cuánto se conservan los pedidos. Lo condiciona el plazo de guarda de comprobantes de la AFIP, así que conviene confirmarlo con el contador. |
 | `PLAZO_ANALITICA` | Cuánto se conservan los eventos. El panel anual necesita 12 meses; más que eso es decisión tuya. |
 | `PLAZO_CUENTA` | Cuánto se conservan los datos de un restaurante después de la baja. |

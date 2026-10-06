@@ -13,6 +13,7 @@ import { Allergen, DietTag, type DishDto } from '@men3d/shared';
 import { DishViewer3D } from '../../components/DishViewer3D.js';
 import { ErrorState, Spinner } from '../../components/ui.js';
 import { ApiError, adminApi, uploadAsset } from '../../lib/api.js';
+import { FotoA3D } from '../../components/FotoA3D.js';
 import { comprimirGlb } from '../../lib/comprimir-glb.js';
 import { allergenLabel, dietLabel } from '../../lib/i18n.js';
 import { useAsync } from '../../lib/useAsync.js';
@@ -361,6 +362,19 @@ export function DishEditorPage(): ReactNode {
           El GLB se usa en la web y en la RA de Android. El USDZ es opcional y mejora
           la RA nativa de iOS.
         </p>
+
+        {/* El modelo generado se escribe tambien en el formulario, no solo en la
+            base: si no, guardar el plato despues lo borraria de vuelta. */}
+        <FotoA3D
+          dishId={isNew ? null : (dishId ?? null)}
+          onModelo={({ glbUrl, photoUrl }) =>
+            setForm({
+              ...state,
+              modelGlbUrl: glbUrl,
+              imageUrl: state.imageUrl || (photoUrl ?? ''),
+            })
+          }
+        />
 
         <AssetField
           label="Modelo GLB"

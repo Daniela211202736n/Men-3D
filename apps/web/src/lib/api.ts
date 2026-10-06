@@ -306,12 +306,81 @@ export interface KdsBoard {
   columns: Array<{ status: string; orders: OrderDto[] }>;
 }
 
+/** Un trabajo de "foto a 3D" tal como lo informa la API. */
+export interface ModelJobDto {
+  id: string;
+  dishId: string;
+  status: 'QUEUED' | 'RUNNING' | 'READY' | 'FAILED';
+  progress: number;
+  photoUrl: string | null;
+  glbUrl: string | null;
+  error: string | null;
+  createdAt: string;
+}
+
+/**
+ * Manda la foto del plato y arranca la generacion del modelo.
+ *
+ * Va por `multipart` y no por el camino normal de assets porque el archivo
+ * tiene que pasar **si o si por la API**: es ella la que habla con el
+ * proveedor. Con `s3` los assets suben directo al bucket, pero una foto que
+ * solo esta en el bucket no le sirve a nadie para generar nada.
+ */
+export async function generarModeloDesdeFoto(
+  dishId: string,
+  foto: File,
+): Promise<ModelJobDto> {
+  const token = getToken();
+  const form = new FormData();
+  form.append('foto', foto);
+
+  const response = await fetch(
+    buildUrl(`/api/admin/dishes/${encodeURIComponent(dishId)}/modelo-desde-foto`),
+    {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    },
+  );
+  const payload = (await response.json()) as ModelJobDto | ApiErrorDto;
+  if (!response.ok) {
+    const err = (payload as ApiErrorDto).error;
+    throw new ApiError(
+      response.status,
+      err?.code ?? 'MODEL_JOB_FAILED',
+      err?.message ?? 'No se pudo generar el modelo',
+    );
+  }
+  return payload as ModelJobDto;
+}
+
 export const adminApi = {
   login: (email: string, password: string) =>
     request<AuthResponseDto>('/api/auth/login', {
       method: 'POST',
       body: { email, password },
     }),
+
+  /** Si esta instalacion tiene con que convertir una foto en un modelo. */
+  modelado: (signal?: AbortSignal) =>
+    request<{ enabled: boolean; provider: string; maxPhotoBytes: number }>(
+      '/api/admin/modelado',
+      { auth: true, signal },
+    ),
+
+  /** Consultar un trabajo. Esta misma llamada es la que lo empuja. */
+  modelJob: (id: string, signal?: AbortSignal) =>
+    request<ModelJobDto>(`/api/admin/model-jobs/${encodeURIComponent(id)}`, {
+      auth: true,
+      signal,
+    }),
+
+  /** El ultimo trabajo de un plato, para retomar despues de recargar. */
+  modelJobDeDish: (dishId: string, signal?: AbortSignal) =>
+    request<ModelJobDto | null>(
+      `/api/admin/dishes/${encodeURIComponent(dishId)}/model-job`,
+      { auth: true, signal },
+    ),
 
   register: (body: {
     restaurantName: string;

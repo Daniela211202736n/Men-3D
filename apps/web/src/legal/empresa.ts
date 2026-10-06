@@ -45,6 +45,15 @@ export const DATOS_LEGALES: Record<string, DatoLegal> = {
   VERSION: { valor: PENDIENTE, origen: 'negocio' },
   /** El proveedor S3 que quede configurado en STORAGE_DRIVER=s3. */
   PROVEEDOR_ALMACENAMIENTO: { valor: PENDIENTE, origen: 'negocio' },
+  /**
+   * El generador de modelos 3D que quede en MODEL3D_PROVIDER.
+   *
+   * Queda vacio a proposito aunque el codigo traiga un adaptador: el valor por
+   * defecto es no tener ninguno, y nombrar en una politica de privacidad a un
+   * tercero que no recibe nada es tan falso como omitir a uno que si. Se
+   * completa cuando se contrata.
+   */
+  PROVEEDOR_3D: { valor: PENDIENTE, origen: 'negocio' },
   /** Decisiones de conservacion. La de pedidos la condiciona la AFIP. */
   PLAZO_PEDIDOS: { valor: PENDIENTE, origen: 'negocio' },
   PLAZO_ANALITICA: { valor: PENDIENTE, origen: 'negocio' },

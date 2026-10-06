@@ -46,12 +46,20 @@ export const Feature = {
   LOYALTY: 'LOYALTY',
   ADVANCED_ANALYTICS: 'ADVANCED_ANALYTICS',
   CUSTOM_BRANDING: 'CUSTOM_BRANDING',
+  /**
+   * Generar el modelo 3D de un plato a partir de una foto.
+   *
+   * No esta en FREE a proposito, y no es por mezquindad: cada plato generado
+   * consume creditos de un proveedor externo que se pagan de verdad. Una cuenta
+   * gratis con esto habilitado es una cuenta gratis que nos cobra.
+   */
+  PHOTO_TO_3D: 'PHOTO_TO_3D',
 } as const;
 export type Feature = (typeof Feature)[keyof typeof Feature];
 
 export const PLAN_FEATURES: Record<PlanTier, readonly Feature[]> = {
   FREE: ['AR_VIEWER'],
-  STARTER: ['AR_VIEWER', 'CUSTOM_BRANDING', 'AUTO_TRANSLATION'],
+  STARTER: ['AR_VIEWER', 'CUSTOM_BRANDING', 'AUTO_TRANSLATION', 'PHOTO_TO_3D'],
   PRO: [
     'AR_VIEWER',
     'CUSTOM_BRANDING',
@@ -61,6 +69,7 @@ export const PLAN_FEATURES: Record<PlanTier, readonly Feature[]> = {
     'AI_PAIRINGS',
     'LOYALTY',
     'ADVANCED_ANALYTICS',
+    'PHOTO_TO_3D',
   ],
   ENTERPRISE: [
     'AR_VIEWER',
@@ -71,6 +80,7 @@ export const PLAN_FEATURES: Record<PlanTier, readonly Feature[]> = {
     'AI_PAIRINGS',
     'LOYALTY',
     'ADVANCED_ANALYTICS',
+    'PHOTO_TO_3D',
   ],
 } as const;
 

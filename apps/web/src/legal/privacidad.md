@@ -99,6 +99,10 @@ Tu correo electrónico y tu nombre, la contraseña guardada como hash con bcrypt
 teléfono, redes, horarios), tu carta, y los datos de tu suscripción: plan,
 estado, períodos y los identificadores de los cobros en la pasarela.
 
+Si usás la función de generar el modelo 3D sacándole una foto al plato, también
+guardamos **esa foto**: queda como imagen del plato en tu carta y es la que se
+manda al proveedor que la convierte. La borrás cuando borrás el plato.
+
 ### 2.4 Si usaste el botón de arrepentimiento
 
 Lo que escribiste en el formulario: tu nombre, tu correo, y si los dejaste, tu
@@ -130,6 +134,7 @@ para que el servicio funcione, y cada uno recibe lo mínimo:
 | **MercadoPago** | El importe y una referencia del pedido. En el abono del restaurante, además, el correo del titular. | Cobrar. |
 | **{{PROVEEDOR_CORREO}}** | Tu correo y el detalle del pedido. | Mandarte la confirmación. |
 | **{{PROVEEDOR_ALMACENAMIENTO}}** | Los modelos 3D y las imágenes de la carta. | Servirlos rápido. Ahí no hay datos personales. |
+| **{{PROVEEDOR_3D}}** | Las fotos de **platos** que saca el restaurante. | Convertirlas en el modelo 3D que se ve en la carta. |
 | **OpenStreetMap** | Tu dirección IP, cuando abrís el mapa en la página del local. | Mostrar el mapa. |
 | **Anthropic** | Nombres y descripciones de **platos**. | Traducir la carta y sugerir maridajes. |
 
@@ -143,6 +148,15 @@ tarjeta. Lo que recibimos de vuelta es si el pago se acreditó.
 **A Anthropic no le mandamos datos personales.** Las traducciones y los
 maridajes se calculan con los nombres y las descripciones de los platos. Ni tu
 nombre, ni tu pedido, ni tus opiniones.
+
+**Las fotos que se convierten en 3D son fotos de comida.** Cuando un
+restaurante usa la función de generar el modelo sacándole una foto al plato,
+esa foto —y nada más que esa foto— va al proveedor que la convierte. Es una
+foto de un plato servido sobre una mesa: no se piden fotos de personas, la
+pantalla que las pide dice expresamente que tiene que entrar el plato solo, y
+es el restaurante quien decide qué fotografía. Si aun así una foto incluyera a
+alguien, el responsable de ese dato es el restaurante que la sacó, y podés
+pedirle que la borre a él o escribirnos a nosotros.
 
 Además, podemos divulgar datos cuando una norma o una orden judicial lo exija.
 

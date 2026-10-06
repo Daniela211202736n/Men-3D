@@ -27,6 +27,7 @@ import { Redis } from 'ioredis';
 import { env } from '../../env.js';
 import { getMailer } from '../mail/index.js';
 import { getPaymentProvider } from '../payments/provider.js';
+import { getProveedor3D } from '../modelado/index.js';
 import { getStorage } from '../storage/index.js';
 import { prisma } from '../../prisma.js';
 
@@ -479,6 +480,53 @@ async function verificarRedis(): Promise<Chequeo> {
   return { titulo: 'Redis', lineas };
 }
 
+// ------------------------------------------------------------ foto a 3D
+
+/**
+ * El generador de modelos 3D.
+ *
+ * Se comprueba por el saldo y no generando un modelo de prueba: generar uno
+ * cuesta creditos, y un verificador que gasta plata cada vez que se corre no lo
+ * corre nadie. El saldo prueba las dos cosas que importan —que la clave es
+ * valida y que alcanza para el proximo plato—, que son justo las dos que fallan
+ * en silencio: una clave vencida y una cuenta sin creditos dan exactamente el
+ * mismo sintoma que todo bien, hasta que un restaurante saca una foto.
+ */
+async function verificarModelado(): Promise<Chequeo> {
+  const lineas: Linea[] = [];
+  const proveedor = getProveedor3D();
+
+  if (proveedor.nombre === 'none') {
+    lineas.push(
+      aviso(
+        'sin generador de modelos 3D (MODEL3D_PROVIDER=none)',
+        'no rompe nada: los platos se cargan subiendo un GLB hecho aparte, que es gratis. Para que el restaurante pueda sacarle una foto al plato hay que contratar un proveedor y poner MODEL3D_PROVIDER y su clave (ver docs/DEPLOY.md)',
+      ),
+    );
+    return { titulo: 'Modelos 3D desde foto', lineas };
+  }
+
+  try {
+    const r = await conTimeout(proveedor.comprobar(), `el proveedor ${proveedor.nombre}`);
+    lineas.push(
+      r.ok
+        ? ok(`${proveedor.nombre}: ${r.detalle}`)
+        : error(
+            `${proveedor.nombre}: ${r.detalle}`,
+            'revisa la clave y el saldo en el panel del proveedor. Sin esto, el boton de "sacale una foto al plato" falla recien cuando un restaurante lo usa',
+          ),
+    );
+  } catch (e) {
+    lineas.push(
+      error(
+        `${proveedor.nombre}: ${motivo(e)}`,
+        'revisa la clave y que el servicio sea alcanzable desde este servidor',
+      ),
+    );
+  }
+  return { titulo: 'Modelos 3D desde foto', lineas };
+}
+
 // ----------------------------------------------------------------- salida
 
 function imprimir(chequeo: Chequeo): void {
@@ -502,6 +550,7 @@ export async function verificarCredenciales(enviarA?: string): Promise<number> {
     await verificarPagos(),
     await verificarCorreo(enviarA),
     await verificarAlmacenamiento(),
+    await verificarModelado(),
     await verificarRedis(),
   ];
 

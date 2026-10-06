@@ -97,6 +97,8 @@ Te comprometés a:
   habilitaciones, bromatología, defensa del consumidor, facturación.
 - **Tener los derechos sobre lo que subís.** Fotos, modelos 3D, textos y marca:
   si no son tuyos, tener permiso.
+- **Fotografiar el plato, no a la gente.** La función de generar el modelo 3D
+  manda la foto a un tercero. Que entre el plato solo.
 - **No usar la plataforma** para actividades ilícitas, ni para cargar contenido
   que no corresponda a tu oferta gastronómica, ni para intentar acceder a datos
   de otros restaurantes.
@@ -104,9 +106,16 @@ Te comprometés a:
 ## 7. Contenido que subís
 
 Lo que subís sigue siendo tuyo. Nos das una licencia no exclusiva, limitada a
-operar el servicio: alojarlo, procesarlo —por ejemplo comprimir un modelo 3D o
-traducir una descripción— y mostrarlo en tu carta. Esa licencia termina cuando
-borrás el contenido o cerrás la cuenta.
+operar el servicio: alojarlo, procesarlo —por ejemplo comprimir un modelo 3D,
+traducir una descripción o **convertir la foto de un plato en su modelo 3D**— y
+mostrarlo en tu carta. Esa licencia termina cuando borrás el contenido o cerrás
+la cuenta.
+
+**El modelo que se genera a partir de tu foto es tuyo también**, en los mismos
+términos que la foto de la que salió. Para generarlo la foto se manda al
+proveedor que figura en la política de privacidad; no se usa para entrenar nada
+nuestro, y lo que ese proveedor haga con lo que recibe se rige por sus propios
+términos, que podés leer antes de usar la función.
 
 No usamos tu contenido para otra cosa. No lo mostramos en la carta de otro
 restaurante.

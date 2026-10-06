@@ -28,7 +28,7 @@ no cubre es una transacción real, que hay que hacer a mano una vez. Ver
   restaurada rota en silencio. Falta agendarlo en el servidor que se elija y
   sincronizar las copias fuera de esa máquina (ver DEPLOY.md).
 
-- **Pruebas automatizadas.** Hay 243 pruebas (`npm test`) más 25 recorridos en navegador (`npm run e2e`): totales e IVA, canje de
+- **Pruebas automatizadas.** Hay 250 pruebas (`npm test`) más 27 recorridos en navegador (`npm run e2e`): totales e IVA, canje de
   puntos, máquina de estados del pedido, el adaptador de MercadoPago completo,
   el almacenamiento local y S3, las de integración del camino del dinero
   (liquidación, idempotencia, importe manipulado, concurrencia), **el aislamiento
@@ -75,9 +75,27 @@ no cubre es una transacción real, que hay que hacer a mano una vez. Ver
 - **Analítica: agregada en SQL.** La tabla de rollup que proponía
   ARCHITECTURE.md §6 resultaba resolver el problema equivocado; los números
   están ahí.
-- **Fotogrametría asistida**: que el restaurante genere el modelo 3D desde el
-  celular dando una vuelta alrededor del plato. Es lo que elimina el mayor costo
-  de implantación.
+- **Foto a 3D: hecho**, en su forma de una sola foto. El restaurante le saca
+  una foto al plato desde el panel y el modelo aparece un par de minutos
+  después. Es lo que elimina el mayor costo de implantación: sin esto, dar de
+  alta a un cliente significa modelar sesenta platos a mano.
+
+  Lo que hay de este lado —que es casi todo, porque la reconstrucción en sí la
+  hace un servicio externo tras una interfaz (`modules/modelado`)—: la foto se
+  valida contra su firma binaria, queda como imagen del plato, el GLB que
+  devuelve el proveedor **se valida y se guarda en nuestro almacenamiento**
+  —el suyo caduca a los pocos días—, se comprime con Draco y se cuelga del
+  plato. Y el guard que importa: **un plato no puede generar dos modelos a la
+  vez**, con un índice único parcial en la base y no con un `if`, porque cada
+  generación se paga y dos toques del botón no pueden costar el doble.
+
+  Falta probarlo contra una cuenta real del proveedor; `npm run verificar:prod`
+  ya comprueba la clave y el saldo.
+
+  Lo que **no** reemplaza: un escaneo con el celular dando la vuelta al plato
+  (Polycam, Scaniverse, Object Capture) sale mejor y no consume créditos. La
+  foto única es para cargar una carta entera rápido; el escaneo, para los platos
+  que venden. Está dicho así en DEPLOY.md, donde el operador lo va a leer.
 - **Modo offline completo** para el comensal.
 - **Integración con comandas y facturación** existentes.
 - **Pruebas A/B de carta: hechas.** Dos descripciones o dos precios para el
@@ -93,6 +111,7 @@ no cubre es una transacción real, que hay que hacer a mano una vez. Ver
 
 | Qué | Dónde | Por qué quedó así |
 | --- | --- | --- |
+| Las URL de assets aceptan ruta relativa | `packages/shared/src/schemas.ts` | No es deuda, es la corrección de un defecto: `z.string().url()` rechazaba `/media/...`, que es lo que devuelve `STORAGE_DRIVER=local`, así que **con el driver local no se podía guardar un plato después de subirle una foto o un modelo**. El validador acepta http(s) o una ruta de este sitio, y sigue rechazando `//otro.com` y `javascript:`. |
 | Prisma fijado en 6.12.0 | `apps/api/package.json` | Las versiones posteriores arrastran el aviso de `deepmerge-ts` en `@prisma/config`. Fijarlo deja `npm audit` en cero; subir cuando Prisma publique la corrección. |
 | `enabledLocales` / `serviceModes` como texto con comas | `apps/api/prisma/schema.prisma` | Portabilidad SQLite↔PostgreSQL. Pasan a `text[]` cambiando solo `lib/lists.ts`. |
 | Los informes agregan en memoria | `modules/analytics/service.ts` | Rinde de sobra a escala de un restaurante; el camino a rollups ya está descrito. |
