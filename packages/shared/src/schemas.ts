@@ -110,6 +110,44 @@ export type MenuQuery = z.infer<typeof menuQuerySchema>;
 
 /* ------------------------------------------------------- admin: catalogo */
 
+/**
+ * URL de un asset nuestro: absoluta, o una ruta del propio sitio.
+ *
+ * `z.string().url()` exige una URL absoluta, y con `STORAGE_DRIVER=local` el
+ * servidor devuelve `/media/<nombre>` —que es lo correcto: el asset lo sirve la
+ * misma API—. El resultado era que **en una instalacion con el driver local no
+ * se podia guardar un plato despues de subirle una foto o un modelo**: la
+ * subida andaba, el campo se llenaba, y "Guardar" devolvia 422. Con `s3` no
+ * pasaba porque ahi la URL es absoluta, asi que el fallo solo aparecia en la
+ * configuracion que usa cualquiera que esta empezando.
+ *
+ * Se acepta entonces una de dos formas, y nada mas:
+ *
+ *   - `http(s)://...` — el bucket o el CDN;
+ *   - `/loquesea` — una ruta de este mismo sitio.
+ *
+ * Lo que NO se acepta, y por eso esto no es un `z.string()` pelado: `//otro.com`
+ * (relativa al protocolo, apunta a otro dominio y parece una ruta local),
+ * `/\otro.com` (lo mismo con la barra al reves, que algunos navegadores
+ * normalizan) y cualquier esquema que no sea http o https —`javascript:` entre
+ * ellos—. Este valor termina en el `src` de una imagen o de un `<model-viewer>`
+ * en la carta de un comensal.
+ */
+const RUTA_DEL_SITIO = /^\/(?![/\\])\S*$/;
+
+export const assetUrl = z
+  .string()
+  .max(2048)
+  .refine((valor) => {
+    if (RUTA_DEL_SITIO.test(valor)) return true;
+    try {
+      const url = new URL(valor);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }, 'Tiene que ser una URL http(s) o una ruta de este sitio que empiece con /');
+
 export const categoryUpsertSchema = z.object({
   name: z.string().min(1).max(60),
   description: z.string().max(400).optional(),
@@ -126,11 +164,11 @@ export const dishUpsertSchema = z.object({
   priceCents: z.number().int().min(0),
   /** Precio tachado, para promos. */
   compareAtPriceCents: z.number().int().min(0).nullable().optional(),
-  imageUrl: z.string().url().nullable().optional(),
+  imageUrl: assetUrl.nullable().optional(),
   /** GLB para Android/WebXR y Chrome Scene Viewer. */
-  modelGlbUrl: z.string().url().nullable().optional(),
+  modelGlbUrl: assetUrl.nullable().optional(),
   /** USDZ opcional para AR Quick Look nativo de iOS. */
-  modelUsdzUrl: z.string().url().nullable().optional(),
+  modelUsdzUrl: assetUrl.nullable().optional(),
   /** Peso de la porcion, se muestra junto al visor 3D. */
   portionGrams: z.number().int().min(0).nullable().optional(),
   calories: z.number().int().min(0).nullable().optional(),
@@ -158,10 +196,10 @@ export type ReorderInput = z.infer<typeof reorderSchema>;
 /* ------------------------------------------------------- admin: branding */
 
 export const brandingSchema = z.object({
-  logoUrl: z.string().url().nullable().optional(),
-  faviconUrl: z.string().url().nullable().optional(),
-  heroImageUrl: z.string().url().nullable().optional(),
-  backgroundImageUrl: z.string().url().nullable().optional(),
+  logoUrl: assetUrl.nullable().optional(),
+  faviconUrl: assetUrl.nullable().optional(),
+  heroImageUrl: assetUrl.nullable().optional(),
+  backgroundImageUrl: assetUrl.nullable().optional(),
   primaryColor: hexColor.optional(),
   accentColor: hexColor.optional(),
   surfaceColor: hexColor.optional(),
@@ -256,6 +294,15 @@ export const analyticsEventInputSchema = z.object({
   query: z.string().max(80).optional(),
   locale: localeSchema.optional(),
   value: z.number().int().optional(),
+  /**
+   * Variante de la prueba A/B que el cliente tenia servida para ese plato.
+   *
+   * La manda el cliente porque el servidor no puede deducirla: deducirla
+   * exigiria recibir el `guestId` con el evento, y que ese vinculo no exista es
+   * lo que hace que la analitica sea anonima de verdad. Un cliente podria
+   * mentir, pero solo ensuciaria su propio balde y no tiene ningun incentivo.
+   */
+  variant: z.enum(['A', 'B']).optional(),
 });
 export type AnalyticsEventInput = z.infer<typeof analyticsEventInputSchema>;
 
@@ -296,3 +343,54 @@ export const translateRequestSchema = z.object({
   overwrite: z.boolean().default(false),
 });
 export type TranslateRequestInput = z.infer<typeof translateRequestSchema>;
+
+/* ------------------------------------------- boton de arrepentimiento */
+
+/**
+ * Pedido de revocacion (Res. 424/2020 SCI).
+ *
+ * Solo nombre y correo son obligatorios, y por norma: la resolucion prohibe
+ * exigirle al consumidor registrarse o hacer cualquier otro tramite para usar
+ * el boton. Pedirle el numero de operacion seria ese tramite. El correo se pide
+ * porque es por donde se le informa el codigo.
+ */
+export const revocationRequestSchema = z.object({
+  name: z.string().trim().min(2, 'decinos como te llamas').max(120),
+  email: z.string().email(),
+  phone: z.string().trim().max(40).optional(),
+  /** Como identifica su contratacion, si se acuerda. Opcional a proposito. */
+  reference: z.string().trim().max(200).optional(),
+  detail: z.string().trim().max(2000).optional(),
+});
+export type RevocationRequestInput = z.infer<typeof revocationRequestSchema>;
+
+/* ------------------------------------------------ pruebas A/B de carta */
+
+/**
+ * Crear una prueba A/B sobre un plato.
+ *
+ * La variante A no se manda: A es lo que dice el plato en la base. Solo se
+ * declara el desvio.
+ */
+export const experimentCreateSchema = z
+  .object({
+    dishId: cuid,
+    field: z.enum(['DESCRIPTION', 'PRICE']),
+    /** Con PRICE, centavos. Con DESCRIPTION, el texto alternativo. */
+    valueB: z.string().trim().min(1).max(600),
+  })
+  .refine(
+    (v) => v.field !== 'PRICE' || /^[0-9]+$/.test(v.valueB),
+    { message: 'con PRICE, valueB son centavos (solo digitos)', path: ['valueB'] },
+  );
+export type ExperimentCreateInput = z.infer<typeof experimentCreateSchema>;
+
+/** Cerrar una prueba, adoptando o no la variante B. */
+export const experimentStopSchema = z.object({
+  /**
+   * `B` aplica el valor de B al plato de verdad y cierra. `A` cierra sin tocar
+   * nada. Sin ganadora, cierra y queda el historial.
+   */
+  winner: z.enum(['A', 'B']).optional(),
+});
+export type ExperimentStopInput = z.infer<typeof experimentStopSchema>;

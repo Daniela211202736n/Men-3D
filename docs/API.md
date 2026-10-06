@@ -89,8 +89,18 @@ mandar al comensal a `checkoutUrl`; lo pagado lo confirma el webhook.
 | `only3d` | `true` | Solo platos con modelo 3D |
 | `locale` | `en` | Idioma de los textos |
 | `sessionId` | `s-ab12…` | Registra la búsqueda con su cantidad de resultados |
+| `guestId` | `g-abc123…` | **Resuelve las pruebas A/B.** No se guarda ni se registra: entra, decide una variante y se descarta |
 
-Responde `{ venue, categories, dishes, locale, matchCount }`.
+Responde `{ venue, categories, dishes, locale, matchCount, experiments }`.
+
+`experiments` dice qué variante se sirvió para cada plato (`{ "<dishId>": "B" }`),
+vacío cuando no hay pruebas corriendo. El cliente la devuelve en los eventos de
+analítica para poder partir el embudo.
+
+**Pasar `guestId` no es opcional de hecho**: sin él la carta sirve el precio de
+control, y `POST /orders` —que sí lo manda— cobraría la variante. El comensal
+pagaría algo que no vio. `GET /dishes/:dishId` acepta el mismo parámetro por el
+mismo motivo.
 
 ---
 
@@ -192,6 +202,43 @@ PUT  /translations/:dishId/:locale      corrección manual (queda MANUAL)
 
 `POST /translations` responde `503 AI_NOT_CONFIGURED` con un mensaje claro si no
 hay `ANTHROPIC_API_KEY`, en vez de fallar de forma rara.
+
+### Pruebas A/B de carta
+
+```
+GET  /experiments                       requiere ADVANCED_ANALYTICS
+POST /experiments                       { dishId, field, valueB }
+POST /experiments/:id/stop              { winner?: 'A' | 'B' }
+```
+
+`field` es `PRICE` o `DESCRIPTION`. **La variante A no se manda**: A es lo que
+dice el plato en la base, y si el restaurante la cambia durante la prueba, el
+control la sigue. Con `PRICE`, `valueB` son centavos.
+
+`409` si el plato ya tiene una prueba corriendo —una por plato, garantizado por
+un índice único parcial— y `400 VARIANTE_IGUAL` si B es igual a lo que ya dice el
+plato.
+
+`stop` con `winner: 'B'` **escribe el valor de B en el plato** y cierra, en una
+transacción. Sin `winner`, sólo cierra.
+
+Cada respuesta trae los números por variante y un veredicto que se niega a
+declarar ganador si la muestra no alcanza. Ver `modules/experiments/resultados.ts`.
+
+## Botón de arrepentimiento
+
+```
+POST /api/arrepentimiento               { name, email, phone?, reference?, detail? }
+```
+
+Público y **sin sesión**: la Res. 424/2020 prohíbe exigirle al consumidor
+registrarse o hacer cualquier otro trámite para revocar. Sólo `name` y `email`
+son obligatorios.
+
+Devuelve `201` con el código de revocación **en la misma respuesta** —la norma da
+24 horas para informarlo y esto son cero— y además se lo manda por correo.
+Límite propio: 5 por IP cada 10 minutos (`REVOCATION_RATE_LIMIT_MAX`), porque es
+un formulario abierto que dispara correo a una dirección que escribe quien lo usa.
 
 ## Webhooks de pago
 

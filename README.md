@@ -62,6 +62,10 @@ docker-compose.apps.yml up -d --build` levanta todo en contenedores en
 
 - **Carta**: alta/baja de platos, precio editable en la fila, disponibilidad,
   destacados y reordenamiento.
+- **Modelo 3D sacándole una foto al plato** — se configura un generador
+  (`MODEL3D_PROVIDER`) y el modelo aparece solo un par de minutos después. Sin
+  eso, se sube un GLB hecho aparte, que es gratis y suele salir mejor si se
+  escanea con el celular. Ver [docs/DEPLOY.md](docs/DEPLOY.md).
 - **Pantalla de cocina (KDS)** en vivo por SSE.
 - **Métricas**: qué platos se miran en 3D y cuáles se venden —y los que no.
 - **QR por mesa** en PDF listo para imprimir, con conteo de escaneos.
@@ -107,6 +111,7 @@ men-3d/
 | [docs/UX-FLOWS.md](docs/UX-FLOWS.md)         | Flujos de usuario principales |
 | [docs/LANZAMIENTO.md](docs/LANZAMIENTO.md)   | Puesta en marcha: en qué orden y qué tarda |
 | [docs/SEGURIDAD.md](docs/SEGURIDAD.md)       | Revisión de seguridad: hallazgos y qué se verificó |
+| [docs/legal/README.md](docs/legal/README.md) | Privacidad y términos: borradores, qué falta completar y qué debe ver un abogado |
 | [docs/API.md](docs/API.md)                   | Referencia de endpoints |
 | [docs/PAYMENTS.md](docs/PAYMENTS.md)         | Pasarelas de pago: MercadoPago, webhooks y cómo agregar otra |
 | [docs/DEPLOY.md](docs/DEPLOY.md)             | Despliegue: Docker, variables, migraciones, bucket y CDN |
@@ -129,6 +134,7 @@ men-3d/
 | `npm run db:migrate` | Crea y aplica una migración nueva |
 | `npm run db:deploy` | Aplica las migraciones pendientes (producción) |
 | `npm run db:plans` | Aplica el catálogo de planes (dato de referencia, no de demo) |
+| `npm run verificar` | Verifica las credenciales contra MercadoPago, Resend y el bucket de verdad |
 | `npm run db:seed` | Vuelve a sembrar los datos de demostración |
 | `npm run db:reset` | Borra la base y la reconstruye desde las migraciones |
 | `npm run db:studio` | Explorador visual de la base |

@@ -27,6 +27,9 @@ import assetRoutes from './modules/assets/routes.js';
 import authRoutes from './modules/auth/routes.js';
 import kdsStreamRoutes from './modules/orders/kds.routes.js';
 import paymentWebhookRoutes from './modules/payments/routes.js';
+import experimentRoutes from './modules/experiments/routes.js';
+import modeladoRoutes from './modules/modelado/routes.js';
+import revocationRoutes from './modules/revocation/routes.js';
 import billingRoutes, {
   billingWebhookRoutes,
   setupFeeWebhookRoutes,
@@ -109,10 +112,18 @@ export async function buildApp(): Promise<FastifyInstance> {
       await instance.register(adminOperationsRoutes);
       await instance.register(adminInsightsRoutes);
       await instance.register(adminTeamRoutes);
+      await instance.register(experimentRoutes);
+      await instance.register(modeladoRoutes);
       await instance.register(billingRoutes);
     },
     { prefix: '/api/admin' },
   );
+
+  // --- boton de arrepentimiento ---------------------------------------------
+  // Publico y sin sesion: la Res. 424/2020 prohibe exigirle al consumidor
+  // registrarse o hacer cualquier otro tramite para revocar. Lleva su propio
+  // limite, que esta explicado en el modulo.
+  await app.register(revocationRoutes, { prefix: '/api/arrepentimiento' });
 
   // --- webhooks de las pasarelas de pago ------------------------------------
   // Publico a proposito: lo autentica la firma de la notificacion, no un token.

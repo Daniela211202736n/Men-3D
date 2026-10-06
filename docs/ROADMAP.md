@@ -12,6 +12,14 @@ Ordenado por lo que bloquea cobrar el primer peso.
 | **Imágenes y despliegue** | **Hecho.** Dockerfiles de API y PWA, compose completo, migraciones como paso aparte, CI que compila las imágenes | Elegir plataforma y publicar las imágenes en un registro. |
 | **Correo transaccional** | **Hecho.** Recuperación de contraseña y confirmación de pedido, en el idioma en que pidió el comensal. Driver `log` para desarrollo, Resend para producción | Probar Resend con un dominio verificado. |
 
+**Para los tres "falta probarlo contra algo real" de esta tabla hay un comando**:
+`npm run verificar:prod -w @men3d/api` habla con MercadoPago, Resend y el bucket
+de verdad y dice qué anda y qué falta, con el arreglo de cada cosa. Lo único que
+no cubre es una transacción real, que hay que hacer a mano una vez. Ver
+[DEPLOY.md § Comprobar que quedó bien configurado](DEPLOY.md).
+
+---
+
 ## 2. Necesario antes de abrir a clientes
 
 - **Respaldos: hechos.** `scripts/backup.sh` y `scripts/restore.sh`, con una
@@ -20,7 +28,7 @@ Ordenado por lo que bloquea cobrar el primer peso.
   restaurada rota en silencio. Falta agendarlo en el servidor que se elija y
   sincronizar las copias fuera de esa máquina (ver DEPLOY.md).
 
-- **Pruebas automatizadas.** Hay 176 pruebas (`npm test`) más 5 de recorrido en navegador (`npm run e2e`): totales e IVA, canje de
+- **Pruebas automatizadas.** Hay 250 pruebas (`npm test`) más 27 recorridos en navegador (`npm run e2e`): totales e IVA, canje de
   puntos, máquina de estados del pedido, el adaptador de MercadoPago completo,
   el almacenamiento local y S3, las de integración del camino del dinero
   (liquidación, idempotencia, importe manipulado, concurrencia), **el aislamiento
@@ -43,8 +51,13 @@ Ordenado por lo que bloquea cobrar el primer peso.
   peticiones del navegador—, más una pantalla para ver, descargar y borrar los
   datos. Borrar anonimiza los pedidos en vez de borrarlos: son comprobantes de
   venta que el restaurante está obligado a conservar. Ver UX-FLOWS.md §F.
-  Falta la parte que no es código: política de privacidad y términos escritos
-  por alguien que sepa del marco legal de cada país donde se opere.
+  **Los textos legales ya están escritos**: política de privacidad y dos de
+  términos, redactados contra el marco argentino y verificados contra lo que el
+  sistema hace de verdad, publicados en `/legal`. Lo que falta son datos para
+  completar —unos los pone el dueño, otros los tiene que escribir un abogado
+  porque definen responsabilidad— y mientras falten, la página lo dice en
+  pantalla. También está el **botón de arrepentimiento** que exige la Res.
+  424/2020. Todo en [legal/README.md](legal/README.md).
 - **Facturación de la suscripción: hecha.** Débito mensual con MercadoPago
   (`preapproval`), período de gracia de 7 días y degradación al plan gratuito
   por impago —la carta del comensal nunca se apaga, ver PAYMENTS.md. El cobro de la configuración
@@ -62,18 +75,43 @@ Ordenado por lo que bloquea cobrar el primer peso.
 - **Analítica: agregada en SQL.** La tabla de rollup que proponía
   ARCHITECTURE.md §6 resultaba resolver el problema equivocado; los números
   están ahí.
-- **Fotogrametría asistida**: que el restaurante genere el modelo 3D desde el
-  celular dando una vuelta alrededor del plato. Es lo que elimina el mayor costo
-  de implantación.
+- **Foto a 3D: hecho**, en su forma de una sola foto. El restaurante le saca
+  una foto al plato desde el panel y el modelo aparece un par de minutos
+  después. Es lo que elimina el mayor costo de implantación: sin esto, dar de
+  alta a un cliente significa modelar sesenta platos a mano.
+
+  Lo que hay de este lado —que es casi todo, porque la reconstrucción en sí la
+  hace un servicio externo tras una interfaz (`modules/modelado`)—: la foto se
+  valida contra su firma binaria, queda como imagen del plato, el GLB que
+  devuelve el proveedor **se valida y se guarda en nuestro almacenamiento**
+  —el suyo caduca a los pocos días—, se comprime con Draco y se cuelga del
+  plato. Y el guard que importa: **un plato no puede generar dos modelos a la
+  vez**, con un índice único parcial en la base y no con un `if`, porque cada
+  generación se paga y dos toques del botón no pueden costar el doble.
+
+  Falta probarlo contra una cuenta real del proveedor; `npm run verificar:prod`
+  ya comprueba la clave y el saldo.
+
+  Lo que **no** reemplaza: un escaneo con el celular dando la vuelta al plato
+  (Polycam, Scaniverse, Object Capture) sale mejor y no consume créditos. La
+  foto única es para cargar una carta entera rápido; el escaneo, para los platos
+  que venden. Está dicho así en DEPLOY.md, donde el operador lo va a leer.
 - **Modo offline completo** para el comensal.
 - **Integración con comandas y facturación** existentes.
-- **Pruebas A/B de carta**: dos descripciones o dos precios para el mismo plato,
-  midiendo con la analítica que ya está.
+- **Pruebas A/B de carta: hechas.** Dos descripciones o dos precios para el
+  mismo plato, con la variante asignada por dispositivo —deterministicamente, no
+  al azar— y medida con la analítica que ya estaba. La regla que ordena todo el
+  diseño: **el comensal paga el precio que vio**, y la carta y el cobro resuelven
+  la variante con la misma función para que no puedan divergir. El panel trae una
+  prueba de significancia de verdad y **se niega a declarar un ganador** mientras
+  la muestra no alcance: con cincuenta visitas y dos pedidos de diferencia, B
+  "gana" la mitad de las veces por azar.
 
 ## 4. Deuda técnica conocida
 
 | Qué | Dónde | Por qué quedó así |
 | --- | --- | --- |
+| Las URL de assets aceptan ruta relativa | `packages/shared/src/schemas.ts` | No es deuda, es la corrección de un defecto: `z.string().url()` rechazaba `/media/...`, que es lo que devuelve `STORAGE_DRIVER=local`, así que **con el driver local no se podía guardar un plato después de subirle una foto o un modelo**. El validador acepta http(s) o una ruta de este sitio, y sigue rechazando `//otro.com` y `javascript:`. |
 | Prisma fijado en 6.12.0 | `apps/api/package.json` | Las versiones posteriores arrastran el aviso de `deepmerge-ts` en `@prisma/config`. Fijarlo deja `npm audit` en cero; subir cuando Prisma publique la corrección. |
 | `enabledLocales` / `serviceModes` como texto con comas | `apps/api/prisma/schema.prisma` | Portabilidad SQLite↔PostgreSQL. Pasan a `text[]` cambiando solo `lib/lists.ts`. |
 | Los informes agregan en memoria | `modules/analytics/service.ts` | Rinde de sobra a escala de un restaurante; el camino a rollups ya está descrito. |

@@ -38,6 +38,9 @@ const NAV: NavItem[] = [
   { to: '/admin/marca', label: 'Marca', feature: 'CUSTOM_BRANDING' },
   { to: '/admin/local', label: 'Datos del local' },
   { to: '/admin/equipo', label: 'Equipo', roles: ['OWNER', 'ADMIN'] },
+  // Detras del mismo plan que el panel de metricas: sin analitica, una prueba
+  // A/B tendria dos variantes y ningun numero.
+  { to: '/admin/pruebas', label: 'Pruebas A/B', feature: 'ADVANCED_ANALYTICS' },
   { to: '/admin/plan', label: 'Plan y uso' },
 ];
 

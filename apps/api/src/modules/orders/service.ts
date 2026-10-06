@@ -16,6 +16,7 @@ import { env } from '../../env.js';
 import { badRequest, conflict, notFound } from '../../lib/errors.js';
 import { generateOrderCode } from '../../lib/ids.js';
 import { toOrderDto } from '../../lib/serialize.js';
+import { desvioPara, experimentosActivos } from '../experiments/service.js';
 import { prisma } from '../../prisma.js';
 import type { PublicTenant } from '../../plugins/tenant.js';
 import { earnPoints, getOrCreateAccount, quoteRedemption, redeemPoints } from '../loyalty/service.js';
@@ -92,14 +93,25 @@ export async function createOrder(
   }
 
   // 2. El precio se toma de la base, nunca del cliente.
+  //
+  // Y si hay una prueba A/B de precio corriendo, se toma de la MISMA funcion
+  // que la uso para armar la carta, con el mismo `guestId`. Esto no es una
+  // optimizacion ni una comodidad: es la unica forma de garantizar que el
+  // comensal pague lo que vio. Dos caminos distintos para resolver el precio
+  // —uno al mostrar, otro al cobrar— divergen tarde o temprano, y cuando
+  // divergen el restaurante le cobro de mas a un cliente.
+  const experimentos = await experimentosActivos(tenant.id);
   const lines = input.items.map((item) => {
     const dish = dishById.get(item.dishId)!;
+    const resultado = desvioPara(experimentos.get(dish.id), input.guestId);
     return {
       dishId: dish.id,
       nameSnapshot: dish.name,
-      unitPriceCents: dish.priceCents,
+      unitPriceCents: resultado?.desvio.priceCents ?? dish.priceCents,
       quantity: item.quantity,
       notes: item.notes ?? null,
+      // Lo que se cobro con que variante. No se deduce despues: se registra.
+      variant: resultado?.asignacion.variant ?? null,
     };
   });
 

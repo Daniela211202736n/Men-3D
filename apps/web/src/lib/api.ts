@@ -19,6 +19,7 @@ import type {
   PairingDto,
   PlanTier,
   ReviewDto,
+  RevocationRequestInput,
   TeamUserDto,
   VenueDto,
 } from '@men3d/shared';
@@ -139,6 +140,14 @@ export interface MenuFilters {
   only3d?: boolean;
   locale?: string;
   sessionId?: string;
+  /**
+   * El dispositivo, solo para resolver las pruebas A/B.
+   *
+   * El servidor no lo guarda ni lo registra: entra, decide una variante y se
+   * descarta. Va aca y no en una cabecera para que quede a la vista de
+   * cualquiera que mire la peticion.
+   */
+  guestId?: string;
   /** Firma de indice: permite pasar el objeto tal cual como query string. */
   [key: string]: string | number | boolean | string[] | undefined;
 }
@@ -152,9 +161,18 @@ export const publicApi = {
   menu: (slug: string, filters: MenuFilters = {}, signal?: AbortSignal) =>
     request<MenuResponse>(`/api/public/${slug}/menu`, { query: filters, signal }),
 
-  dish: (slug: string, dishId: string, locale?: string, signal?: AbortSignal) =>
+  dish: (
+    slug: string,
+    dishId: string,
+    locale?: string,
+    signal?: AbortSignal,
+    guestId?: string,
+  ) =>
     request<DishDto>(`/api/public/${slug}/dishes/${dishId}`, {
-      query: { locale },
+      // El guestId va por el mismo motivo que en la carta: la ficha del plato
+      // tiene que mostrar el mismo precio que la carta, y el que se va a
+      // cobrar.
+      query: { locale, guestId },
       signal,
     }),
 
@@ -244,6 +262,18 @@ export const publicApi = {
       ...(guestId ? { query: { guestId } } : {}),
       signal,
     }),
+
+  /**
+   * Boton de arrepentimiento. No cuelga de un restaurante: es la revocacion de
+   * la contratacion con la plataforma, y la Res. 424/2020 no permite exigirle
+   * al consumidor ningun tramite previo —ni registrarse, ni saber de que local
+   * se trata.
+   */
+  revocacion: (input: RevocationRequestInput, signal?: AbortSignal) =>
+    request<{ code: string; createdAt: string; mensaje: string }>(
+      '/api/arrepentimiento',
+      { method: 'POST', body: input, signal },
+    ),
 };
 
 /* --------------------------------------------------------------- backoffice */
@@ -276,12 +306,81 @@ export interface KdsBoard {
   columns: Array<{ status: string; orders: OrderDto[] }>;
 }
 
+/** Un trabajo de "foto a 3D" tal como lo informa la API. */
+export interface ModelJobDto {
+  id: string;
+  dishId: string;
+  status: 'QUEUED' | 'RUNNING' | 'READY' | 'FAILED';
+  progress: number;
+  photoUrl: string | null;
+  glbUrl: string | null;
+  error: string | null;
+  createdAt: string;
+}
+
+/**
+ * Manda la foto del plato y arranca la generacion del modelo.
+ *
+ * Va por `multipart` y no por el camino normal de assets porque el archivo
+ * tiene que pasar **si o si por la API**: es ella la que habla con el
+ * proveedor. Con `s3` los assets suben directo al bucket, pero una foto que
+ * solo esta en el bucket no le sirve a nadie para generar nada.
+ */
+export async function generarModeloDesdeFoto(
+  dishId: string,
+  foto: File,
+): Promise<ModelJobDto> {
+  const token = getToken();
+  const form = new FormData();
+  form.append('foto', foto);
+
+  const response = await fetch(
+    buildUrl(`/api/admin/dishes/${encodeURIComponent(dishId)}/modelo-desde-foto`),
+    {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    },
+  );
+  const payload = (await response.json()) as ModelJobDto | ApiErrorDto;
+  if (!response.ok) {
+    const err = (payload as ApiErrorDto).error;
+    throw new ApiError(
+      response.status,
+      err?.code ?? 'MODEL_JOB_FAILED',
+      err?.message ?? 'No se pudo generar el modelo',
+    );
+  }
+  return payload as ModelJobDto;
+}
+
 export const adminApi = {
   login: (email: string, password: string) =>
     request<AuthResponseDto>('/api/auth/login', {
       method: 'POST',
       body: { email, password },
     }),
+
+  /** Si esta instalacion tiene con que convertir una foto en un modelo. */
+  modelado: (signal?: AbortSignal) =>
+    request<{ enabled: boolean; provider: string; maxPhotoBytes: number }>(
+      '/api/admin/modelado',
+      { auth: true, signal },
+    ),
+
+  /** Consultar un trabajo. Esta misma llamada es la que lo empuja. */
+  modelJob: (id: string, signal?: AbortSignal) =>
+    request<ModelJobDto>(`/api/admin/model-jobs/${encodeURIComponent(id)}`, {
+      auth: true,
+      signal,
+    }),
+
+  /** El ultimo trabajo de un plato, para retomar despues de recargar. */
+  modelJobDeDish: (dishId: string, signal?: AbortSignal) =>
+    request<ModelJobDto | null>(
+      `/api/admin/dishes/${encodeURIComponent(dishId)}/model-job`,
+      { auth: true, signal },
+    ),
 
   register: (body: {
     restaurantName: string;
@@ -533,7 +632,58 @@ export const adminApi = {
       body: { targetLocale, overwrite },
       auth: true,
     }),
+
+  // --- pruebas A/B de carta ---
+
+  experiments: (signal?: AbortSignal) =>
+    request<ExperimentResultDto[]>('/api/admin/experiments', { auth: true, signal }),
+
+  createExperiment: (body: { dishId: string; field: string; valueB: string }) =>
+    request<ExperimentResultDto>('/api/admin/experiments', {
+      method: 'POST',
+      body,
+      auth: true,
+    }),
+
+  /** `winner: 'B'` adopta el valor de B en el plato; sin ganadora solo cierra. */
+  stopExperiment: (id: string, winner?: 'A' | 'B') =>
+    request<ExperimentResultDto>(`/api/admin/experiments/${id}/stop`, {
+      method: 'POST',
+      body: winner ? { winner } : {},
+      auth: true,
+    }),
 };
+
+/** Lo que devuelve el backend por cada prueba. Ver experiments/resultados.ts. */
+export interface ExperimentVariantDto {
+  variant: 'A' | 'B';
+  valor: string;
+  vistas: number;
+  alCarrito: number;
+  pedidos: number;
+  ingresoCents: number;
+  conversion: number | null;
+  ingresoPorVistaCents: number | null;
+}
+
+export interface ExperimentResultDto {
+  id: string;
+  dishId: string;
+  dishName: string;
+  field: 'DESCRIPTION' | 'PRICE';
+  status: 'RUNNING' | 'STOPPED';
+  startedAt: string;
+  stoppedAt: string | null;
+  winner: 'A' | 'B' | null;
+  variantes: [ExperimentVariantDto, ExperimentVariantDto];
+  veredicto: {
+    clase: 'sin-datos' | 'falta-muestra' | 'sin-diferencia' | 'gana';
+    mensaje: string;
+    ganadora?: 'A' | 'B';
+    valorP?: number;
+  };
+  avisoDePrecio: boolean;
+}
 
 /**
  * Descarga del PDF de QR. Va por `fetch` en vez de un `<a download>` porque la

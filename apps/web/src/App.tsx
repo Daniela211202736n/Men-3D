@@ -2,6 +2,8 @@
  * Rutas de la aplicacion.
  *
  *   /                          portada de la plataforma
+ *   /legal/*                   privacidad y terminos
+ *   /arrepentimiento           revocacion de la contratacion (Res. 424/2020)
  *   /m/:slug                   carta publica (y sus subrutas)
  *   /admin/*                   backoffice del restaurante
  *
@@ -59,6 +61,17 @@ const PrivacyPage = lazy(() =>
 const TeamPage = lazy(() =>
   import('./pages/admin/TeamPage.js').then((m) => ({ default: m.TeamPage })),
 );
+// `lazy` tambien para los textos legales: son tres documentos largos y la
+// enorme mayoria de las visitas a una carta no los abre nunca.
+const LegalPage = lazy(() =>
+  import('./pages/public/LegalPage.js').then((m) => ({ default: m.LegalPage })),
+);
+const ExperimentsPage = lazy(() =>
+  import('./pages/admin/ExperimentsPage.js').then((m) => ({ default: m.ExperimentsPage })),
+);
+const RevocationPage = lazy(() =>
+  import('./pages/public/RevocationPage.js').then((m) => ({ default: m.RevocationPage })),
+);
 const ForgotPasswordPage = lazy(() =>
   import('./pages/admin/PasswordPages.js').then((m) => ({
     default: m.ForgotPasswordPage,
@@ -74,6 +87,27 @@ export function App(): ReactNode {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+
+      {/* --- textos legales --- */}
+      <Route
+        path="/legal/privacidad"
+        element={<Lazy element={<LegalPage documento="privacidad" />} />}
+      />
+      <Route
+        path="/legal/terminos"
+        element={<Lazy element={<LegalPage documento="terminos" />} />}
+      />
+      <Route
+        path="/legal/terminos-comensal"
+        element={<Lazy element={<LegalPage documento="terminos-comensal" />} />}
+      />
+      <Route path="/legal" element={<Navigate to="/legal/privacidad" replace />} />
+
+      {/* Res. 424/2020: acceso directo desde la portada y sin pedir registro. */}
+      <Route
+        path="/arrepentimiento"
+        element={<Lazy element={<RevocationPage />} />}
+      />
 
       {/* --- carta publica --- */}
       <Route path="/m/:slug" element={<MenuLayout />}>
@@ -112,6 +146,7 @@ export function App(): ReactNode {
         <Route path="local" element={<Lazy element={<VenueSettingsPage />} />} />
         <Route path="plan" element={<Lazy element={<PlanPage />} />} />
         <Route path="equipo" element={<Lazy element={<TeamPage />} />} />
+        <Route path="pruebas" element={<Lazy element={<ExperimentsPage />} />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

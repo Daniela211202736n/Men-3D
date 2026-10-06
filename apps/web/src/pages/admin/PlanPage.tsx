@@ -24,6 +24,7 @@ const FEATURE_LABELS: Record<Feature, string> = {
   LOYALTY: 'Programa de puntos',
   ADVANCED_ANALYTICS: 'Metricas de interes visual',
   CUSTOM_BRANDING: 'Personalizacion de marca',
+  PHOTO_TO_3D: 'Modelo 3D a partir de una foto',
 };
 
 const TIER_ORDER: PlanTier[] = ['FREE', 'STARTER', 'PRO', 'ENTERPRISE'];

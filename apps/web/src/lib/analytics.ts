@@ -9,7 +9,7 @@
  * sueltos mientras el cliente gira un modelo 3D se notan; un request cada dos
  * segundos, no.
  */
-import { AnalyticsEvent, type AnalyticsEventInput } from '@men3d/shared';
+import { AnalyticsEvent, type AnalyticsEventInput, type Variant } from '@men3d/shared';
 
 import { publicApi } from './api.js';
 import { puedeMedir } from './consent.js';
@@ -24,6 +24,24 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 let currentSlug: string | null = null;
 /** Eventos que solo deben contarse una vez por sesion (ver `trackOnce`). */
 const seenOnce = new Set<string>();
+/**
+ * Que variante de prueba A/B sirvio el servidor para cada plato.
+ *
+ * Se guarda aca, y no se pasa en cada `track`, porque hay muchas llamadas
+ * repartidas por la carta y olvidarse en una sola dejaria esos eventos sin
+ * atribuir —un embudo con un escalon tuerto es peor que ninguno—.
+ *
+ * El servidor no puede deducirla: deducirla exigiria mandarle el `guestId`
+ * junto con cada evento, y que ese vinculo NO exista es lo que hace que la
+ * analitica sea anonima de verdad. Lo que viaja es un bit, A o B, que
+ * comparten miles de dispositivos.
+ */
+let variantesServidas: Record<string, Variant> = {};
+
+/** La carta avisa que le toco a cada plato. Vacio = no hay pruebas corriendo. */
+export function setVariantesServidas(mapa: Record<string, Variant>): void {
+  variantesServidas = mapa;
+}
 
 export function setAnalyticsSlug(slug: string): void {
   if (currentSlug && currentSlug !== slug) flush();
@@ -73,6 +91,9 @@ export function track(type: AnalyticsEvent, options: TrackOptions = {}): void {
     query: options.query,
     value: options.value,
     locale: options.locale as AnalyticsEventInput['locale'],
+    // Solo si ese plato esta en una prueba. Sin plato no hay variante que
+    // atribuir.
+    variant: options.dishId ? variantesServidas[options.dishId] : undefined,
   });
   // El lote se fuerza si se llena, para no perder eventos de una sesion larga.
   if (queue.length >= MAX_BATCH) flush();

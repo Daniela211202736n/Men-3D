@@ -14,7 +14,7 @@
 // ===========================================================================
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   // `native` para desarrollo; el target musl es el de la imagen Alpine con la
   // que se despliega. Sin declararlo, el motor de consultas no arranca dentro
   // del contenedor y el fallo recien aparece en el despliegue.
@@ -30,28 +30,28 @@ datasource db {
 
 /// Catalogo de planes del SaaS: suscripcion mensual + setup inicial.
 model Plan {
-  id             String  @id @default(cuid())
+  id            String  @id @default(cuid())
   /// FREE | STARTER | PRO | ENTERPRISE
-  tier           String  @unique
-  name           String
-  monthlyCents   Int
+  tier          String  @unique
+  name          String
+  monthlyCents  Int
   /// Cobro unico de configuracion inicial (carga de carta + modelado 3D).
-  setupFeeCents  Int     @default(0)
+  setupFeeCents Int     @default(0)
   /// Limites del plan; 0 = ilimitado.
-  maxDishes      Int     @default(0)
-  max3dModels    Int     @default(0)
+  maxDishes     Int     @default(0)
+  max3dModels   Int     @default(0)
   /// Lista de Feature separada por comas (ver PLAN_FEATURES en @men3d/shared).
-  features       String  @default("")
-  isPublic       Boolean @default(true)
+  features      String  @default("")
+  isPublic      Boolean @default(true)
 
   subscriptions Subscription[]
 }
 
 /// Un restaurante. Es la raiz de aislamiento de datos (el "tenant").
 model Tenant {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   /// Identificador de la URL publica: /m/:slug
-  slug        String   @unique
+  slug        String  @unique
   name        String
   description String?
 
@@ -74,32 +74,34 @@ model Tenant {
   facebookUrl  String?
 
   // --- operacion ----------------------------------------------------------
-  openingHours String?
-  currency     String @default("ARS")
+  openingHours   String?
+  currency       String  @default("ARS")
   /// Idioma en el que el dueño carga la carta (idioma de origen).
-  defaultLocale String @default("es")
+  defaultLocale  String  @default("es")
   /// Idiomas ofrecidos al comensal, separados por comas: "es,en,pt".
-  enabledLocales String @default("es")
+  enabledLocales String  @default("es")
   /// IVA en basis points (2100 = 21 %).
-  taxRateBps   Int    @default(0)
+  taxRateBps     Int     @default(0)
   /// DINE_IN,TAKEAWAY,DELIVERY separados por comas.
-  serviceModes String @default("DINE_IN")
-  isActive     Boolean @default(true)
+  serviceModes   String  @default("DINE_IN")
+  isActive       Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  branding     Branding?
-  subscription Subscription?
-  users        User[]
-  categories   Category[]
-  dishes       Dish[]
-  pairings     Pairing[]
-  reviews      Review[]
-  orders       Order[]
-  events       AnalyticsEvent[]
+  branding        Branding?
+  subscription    Subscription?
+  users           User[]
+  categories      Category[]
+  dishes          Dish[]
+  pairings        Pairing[]
+  reviews         Review[]
+  orders          Order[]
+  events          AnalyticsEvent[]
   loyaltyAccounts LoyaltyAccount[]
-  qrCodes      QrCode[]
+  qrCodes         QrCode[]
+  experiments     Experiment[]
+  modelJobs       ModelJob[]
 
   @@index([isActive])
 }
@@ -137,13 +139,13 @@ model Subscription {
   /// PAST_DUE es "fallo un cobro pero sigue andando todo": hay gracia por
   /// delante. SUSPENDED es "se acabo la gracia": el restaurante vuelve al plan
   /// gratuito sin perder nada de lo cargado.
-  status        String    @default("TRIALING")
-  trialEndsAt   DateTime?
+  status           String    @default("TRIALING")
+  trialEndsAt      DateTime?
   currentPeriodEnd DateTime?
   /// Hasta cuando sigue andando todo despues de un cobro fallido.
-  graceEndsAt   DateTime?
+  graceEndsAt      DateTime?
   /// Si el setup inicial ya fue cobrado.
-  setupFeePaid  Boolean   @default(false)
+  setupFeePaid     Boolean   @default(false)
 
   /// MANUAL | MERCADOPAGO. MANUAL es el alta a mano, que sigue sirviendo para
   /// los primeros clientes y para el periodo de prueba.
@@ -153,8 +155,8 @@ model Subscription {
   lastPaymentAt DateTime?
   canceledAt    DateTime?
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   events BillingEvent[]
 }
@@ -165,7 +167,7 @@ model Subscription {
 /// MercadoPago reintenta los avisos y no garantiza orden ni unicidad: sin esta
 /// tabla, un reintento del aviso de cobro podria extender el periodo dos veces.
 model BillingEvent {
-  id             String @id @default(cuid())
+  id             String        @id @default(cuid())
   subscriptionId String?
   subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
 
@@ -186,17 +188,17 @@ model BillingEvent {
 
 /// Usuario del backoffice. El email es unico a nivel plataforma.
 model User {
-  id           String @id @default(cuid())
+  id           String    @id @default(cuid())
   tenantId     String
-  tenant       Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  email        String @unique
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email        String    @unique
   name         String
   passwordHash String
   /// OWNER | ADMIN | STAFF | SUPPORT
-  role         String @default("ADMIN")
-  isActive     Boolean @default(true)
+  role         String    @default("ADMIN")
+  isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
 
   passwordResetTokens PasswordResetToken[]
 
@@ -208,15 +210,15 @@ model User {
 /// Se guarda el **hash** del token, nunca el token en claro: con acceso de
 /// lectura a la base, un atacante no puede fabricar el enlace de nadie.
 model PasswordResetToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// SHA-256 del token que viaja en el enlace.
-  tokenHash String   @unique
+  tokenHash String    @unique
   expiresAt DateTime
   /// Momento en que se uso; un token solo sirve una vez.
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([userId])
   @@index([expiresAt])
@@ -260,14 +262,14 @@ model Dish {
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
-  name        String
-  description String?
+  name                String
+  description         String?
   /// Precio en centavos de la moneda del tenant.
-  priceCents  Int
+  priceCents          Int
   /// Precio anterior tachado (promociones).
   compareAtPriceCents Int?
 
-  imageUrl String?
+  imageUrl     String?
   /// Modelo 3D principal (GLB): lo consume <model-viewer> en web y en AR Android.
   modelGlbUrl  String?
   /// Variante USDZ para AR Quick Look de iOS.
@@ -284,8 +286,8 @@ model Dish {
   isFeatured  Boolean @default(false)
   position    Int     @default(0)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   /// Baja logica: conserva el historico de pedidos y analitica.
   archivedAt DateTime?
 
@@ -296,8 +298,10 @@ model Dish {
   reviews      Review[]
   orderItems   OrderItem[]
   events       AnalyticsEvent[]
-  pairingsFrom Pairing[] @relation("PairingSource")
-  pairingsTo   Pairing[] @relation("PairingTarget")
+  experiments  Experiment[]
+  modelJobs    ModelJob[]
+  pairingsFrom Pairing[]         @relation("PairingSource")
+  pairingsTo   Pairing[]         @relation("PairingTarget")
 
   @@index([tenantId, position])
   @@index([tenantId, categoryId])
@@ -305,13 +309,13 @@ model Dish {
 }
 
 model DishTranslation {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   dishId      String
-  dish        Dish    @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  dish        Dish     @relation(fields: [dishId], references: [id], onDelete: Cascade)
   locale      String
   name        String
   description String?
-  source      String  @default("AUTO")
+  source      String   @default("AUTO")
   updatedAt   DateTime @updatedAt
 
   @@unique([dishId, locale])
@@ -320,11 +324,11 @@ model DishTranslation {
 
 /// Alergeno declarado en un plato (filtro "no apto / contiene").
 model DishAllergen {
-  id       String @id @default(cuid())
-  dishId   String
-  dish     Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  id         String  @id @default(cuid())
+  dishId     String
+  dish       Dish    @relation(fields: [dishId], references: [id], onDelete: Cascade)
   /// Valor de Allergen (GLUTEN, MILK, ...).
-  allergen String
+  allergen   String
   /// true = "puede contener trazas"; se muestra como advertencia suave.
   mayContain Boolean @default(false)
 
@@ -356,17 +360,17 @@ model DishIngredient {
 /// Maridaje curado por el restaurante. Alimenta al recomendador junto con el
 /// co-consumo historico calculado desde OrderItem.
 model Pairing {
-  id              String @id @default(cuid())
+  id              String  @id @default(cuid())
   tenantId        String
-  tenant          Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   dishId          String
-  dish            Dish   @relation("PairingSource", fields: [dishId], references: [id], onDelete: Cascade)
+  dish            Dish    @relation("PairingSource", fields: [dishId], references: [id], onDelete: Cascade)
   suggestedDishId String
-  suggestedDish   Dish   @relation("PairingTarget", fields: [suggestedDishId], references: [id], onDelete: Cascade)
+  suggestedDish   Dish    @relation("PairingTarget", fields: [suggestedDishId], references: [id], onDelete: Cascade)
   /// Valor de PairingReason.
-  reason          String @default("CURATED")
+  reason          String  @default("CURATED")
   /// Peso manual 0..100 para ordenar sugerencias.
-  weight          Int    @default(50)
+  weight          Int     @default(50)
   /// Copy mostrado al cliente; lo puede generar la IA.
   blurb           String?
 
@@ -386,11 +390,11 @@ model Review {
 
   rating     Int
   comment    String?
-  authorName String  @default("Anonimo")
+  authorName String   @default("Anonimo")
   /// Identificador del comensal anonimo (localStorage), para evitar duplicados.
   guestId    String?
   /// PENDING | PUBLISHED | HIDDEN
-  status     String  @default("PUBLISHED")
+  status     String   @default("PUBLISHED")
   /// Respuesta publica del restaurante.
   reply      String?
   createdAt  DateTime @default(now())
@@ -409,9 +413,9 @@ model Order {
   code     String
 
   /// Valor de OrderStatus.
-  status      String @default("DRAFT")
+  status      String  @default("DRAFT")
   /// DINE_IN | TAKEAWAY | DELIVERY
-  serviceMode String @default("DINE_IN")
+  serviceMode String  @default("DINE_IN")
   /// Mesa de la que se escaneo el QR.
   tableLabel  String?
 
@@ -432,8 +436,8 @@ model Order {
   pointsEarned   Int @default(0)
   pointsRedeemed Int @default(0)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   /// Momento en que cocina lo acepto (para medir tiempos del KDS).
   acceptedAt DateTime?
   readyAt    DateTime?
@@ -458,8 +462,16 @@ model OrderItem {
   /// carta, el historico y los informes siguen siendo fieles.
   nameSnapshot   String
   unitPriceCents Int
-  quantity       Int    @default(1)
+  quantity       Int     @default(1)
   notes          String?
+  /// Variante del experimento con la que se COBRO esta linea (A | B).
+  ///
+  /// Se guarda aunque se pueda deducir del `guestId` del pedido, por dos
+  /// motivos: el borrado de datos del comensal pone ese guestId en null —y ahi
+  /// el pedido quedaria sin atribuir— y si alguna vez cambia la funcion de
+  /// asignacion, los pedidos viejos seguirian diciendo la verdad. Lo que se
+  /// cobro no se deduce: se registra.
+  variant        String?
 
   @@index([orderId])
   @@index([dishId])
@@ -475,9 +487,9 @@ model Payment {
   /// Id del cobro en la pasarela.
   providerRef String?
   /// Valor de PaymentStatus.
-  status      String @default("REQUIRES_PAYMENT")
+  status      String   @default("REQUIRES_PAYMENT")
   amountCents Int
-  currency    String @default("ARS")
+  currency    String   @default("ARS")
   /// Respuesta cruda de la pasarela (JSON serializado) para auditoria.
   rawPayload  String?
   createdAt   DateTime @default(now())
@@ -491,24 +503,32 @@ model Payment {
 /// Una fila por interaccion. Tabla de solo-escritura en caliente; los informes
 /// agregan por rango de fechas. En Postgres conviene particionar por mes.
 model AnalyticsEvent {
-  id       String @id @default(cuid())
+  id       String  @id @default(cuid())
   tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   dishId   String?
-  dish     Dish?  @relation(fields: [dishId], references: [id], onDelete: SetNull)
+  dish     Dish?   @relation(fields: [dishId], references: [id], onDelete: SetNull)
 
   /// Valor de AnalyticsEvent (MENU_OPEN, DISH_VIEW_3D, AR_LAUNCH, ...).
-  type      String
+  type       String
   /// Agrupa los eventos de una misma visita sin cookies de terceros.
-  sessionId String
+  sessionId  String
   /// Tiempo con el modelo 3D en pantalla.
   durationMs Int?
   /// Termino buscado (solo en eventos SEARCH).
-  query     String?
-  locale    String?
+  query      String?
+  /// Variante del experimento que el dispositivo tenia servida (A | B).
+  ///
+  /// La manda el cliente, y no se deduce en el servidor a proposito: deducirla
+  /// exigiria recibir el `guestId` junto con el evento, y que ese vinculo NO
+  /// exista es lo que hace que la analitica sea anonima de verdad (ver
+  /// modules/privacy/service.ts). Un bit que dice "A" o "B", compartido por
+  /// miles de dispositivos, no identifica a nadie.
+  variant    String?
+  locale     String?
   /// Campo numerico generico: cantidad de resultados, centavos del pedido, ...
-  value     Int?
-  createdAt DateTime @default(now())
+  value      Int?
+  createdAt  DateTime @default(now())
 
   @@index([tenantId, createdAt])
   @@index([tenantId, type, createdAt])
@@ -519,16 +539,16 @@ model AnalyticsEvent {
 // --------------------------------------------------------------- FIDELIDAD
 
 model LoyaltyAccount {
-  id       String @id @default(cuid())
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   /// Comensal anonimo identificado por el id guardado en su navegador.
-  guestId  String
-  email    String?
-  balance  Int    @default(0)
-  lifetimePoints Int @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  guestId        String
+  email          String?
+  balance        Int      @default(0)
+  lifetimePoints Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   ledger LoyaltyLedger[]
 
@@ -537,7 +557,7 @@ model LoyaltyAccount {
 
 /// Libro mayor de puntos: el saldo es la suma de sus movimientos.
 model LoyaltyLedger {
-  id        String @id @default(cuid())
+  id        String         @id @default(cuid())
   accountId String
   account   LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   /// Positivo acumula, negativo canjea.
@@ -545,11 +565,11 @@ model LoyaltyLedger {
   /// Valor de LoyaltyReason.
   reason    String
   orderId   String?
-  order     Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  order     Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
   /// Clave de idempotencia: evita acreditar dos veces el mismo hecho
   /// (p. ej. "ver el plato X en la sesion Y").
   dedupeKey String?
-  createdAt DateTime @default(now())
+  createdAt DateTime       @default(now())
 
   @@unique([accountId, dedupeKey])
   @@index([accountId, createdAt])
@@ -560,15 +580,128 @@ model LoyaltyLedger {
 /// Un QR por mesa: el menu abre con la mesa ya identificada y el escaneo queda
 /// contado, asi el dueño sabe que mesas usan el menu digital.
 model QrCode {
-  id         String @id @default(cuid())
+  id         String    @id @default(cuid())
   tenantId   String
-  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   tableLabel String?
   /// Token corto que viaja en la URL: /m/:slug?t=<token>
-  token      String @unique
-  scans      Int    @default(0)
+  token      String    @unique
+  scans      Int       @default(0)
   lastScanAt DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   @@index([tenantId])
+}
+
+// -------------------------------------------------- BOTON DE ARREPENTIMIENTO
+
+/// Pedido de revocacion de una contratacion (Res. 424/2020 SCI).
+///
+/// No cuelga de `Tenant` a proposito: la resolucion prohibe exigirle al
+/// consumidor registrarse o hacer cualquier otro tramite para usar el boton,
+/// asi que quien lo usa puede no tener cuenta, puede no acordarse con que
+/// correo la abrio, o puede ser alguien a quien le cobraron sin haber
+/// contratado. Pedir un tenantId seria justamente el tramite que la norma no
+/// permite pedir. Lo que llega es lo que la persona quiso escribir.
+///
+/// `code` es lo que hay que informarle dentro de las 24 horas. Se le muestra en
+/// pantalla en el acto —mismo medio, dentro del plazo— y ademas se le manda por
+/// correo; `notifiedAt` registra que el correo salio.
+model RevocationRequest {
+  id         String    @id @default(cuid())
+  /// Codigo de identificacion de la revocacion que se le informa al consumidor.
+  code       String    @unique
+  name       String
+  email      String
+  phone      String?
+  /// Como identifica su contratacion: el correo de la cuenta, un CUIT, el
+  /// numero de operacion. Opcional: la norma no permite exigirlo.
+  reference  String?
+  detail     String?
+  /// Cuando se le informo el codigo por correo. Null = solo se vio en pantalla.
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([createdAt])
+}
+
+// ------------------------------------------------------ PRUEBAS A/B DE CARTA
+
+/// Una prueba A/B sobre un plato: dos descripciones, o dos precios.
+///
+/// **La variante A no se guarda.** A es lo que dice el plato en la base, asi
+/// que si el restaurante le cambia el precio en medio de la prueba, el control
+/// lo sigue —que es lo que uno quiere: el plato es la verdad y el experimento
+/// es un desvio.
+///
+/// Un plato puede tener UNA prueba corriendo a la vez, y eso lo garantiza un
+/// indice unico parcial que se crea a mano en la migracion (Prisma no sabe
+/// expresarlos). Sin eso, dos pruebas sobre el mismo precio se pisan y los
+/// resultados de las dos quedan sin sentido.
+model Experiment {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  dishId   String
+  dish     Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  /// Valor de ExperimentField: DESCRIPTION | PRICE.
+  field  String
+  /// El valor de la variante B. Con PRICE son centavos en texto.
+  valueB String
+
+  /// RUNNING | STOPPED
+  status    String    @default("RUNNING")
+  startedAt DateTime  @default(now())
+  stoppedAt DateTime?
+  /// Que variante se adopto al cerrar: A | B. Null = se cerro sin decidir.
+  winner    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, status])
+  @@index([dishId])
+}
+
+/// Un trabajo de "foto a 3D".
+///
+/// Generar un modelo desde una foto tarda entre uno y cinco minutos: no entra
+/// en el ciclo de una peticion, y el dueño no puede quedarse con el navegador
+/// abierto esperando. Por eso es una fila: se crea, se manda al proveedor, y se
+/// consulta despues —cuantas veces haga falta y desde donde sea—.
+///
+/// Tambien es el registro de lo que se gasto. Cada trabajo consume creditos del
+/// proveedor, que se pagan: si alguna vez hay que discutir una factura, esta es
+/// la lista.
+model ModelJob {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  dishId   String
+  dish     Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  /// QUEUED | RUNNING | READY | FAILED
+  status         String  @default("QUEUED")
+  /// Quien lo genero: "meshy", y maniana el que sea.
+  provider       String
+  /// El identificador del trabajo del lado del proveedor.
+  providerTaskId String?
+  /// 0 a 100, tal como lo informa el proveedor.
+  progress       Int     @default(0)
+
+  /// La foto que se uso, ya guardada en nuestro almacenamiento.
+  photoUrl String?
+  /// El GLB resultante, ya comprimido y guardado por nosotros.
+  glbUrl   String?
+  /// Motivo del fallo, en castellano y para que lo lea el dueño del local.
+  error    String?
+  /// Creditos que informo el proveedor haber consumido.
+  credits  Int?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  finishedAt DateTime?
+
+  @@index([tenantId, status])
+  @@index([dishId, createdAt])
 }

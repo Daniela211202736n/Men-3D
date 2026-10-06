@@ -89,6 +89,13 @@ export default defineConfig({
         CORS_ORIGIN: WEB,
         // El recorrido hace varios logins; el limite normal es para internet.
         AUTH_RATE_LIMIT_MAX: '500',
+        // Idem el boton de arrepentimiento: manda formularios de verdad, y el
+        // contador sobrevive entre corridas si se reusa el servidor.
+        REVOCATION_RATE_LIMIT_MAX: '500',
+        // El generador de modelos 3D simulado. Sin esto el recorrido de "sacale
+        // una foto al plato" no se puede probar sin una clave de verdad —y lo
+        // que no se puede probar gratis no se prueba—.
+        MODEL3D_PROVIDER: 'mock',
       },
     },
     {

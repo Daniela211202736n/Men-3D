@@ -110,7 +110,10 @@ Plan ──< Subscription >── Tenant ──┬──< User
                                    │        └──< Payment (1-1)
                                    ├──< AnalyticsEvent
                                    ├──< LoyaltyAccount ──< LoyaltyLedger
+                                   ├──< Experiment  (y >── Dish)
                                    └──< QrCode
+
+RevocationRequest        (suelta: sin tenantId, ver abajo)
 ```
 
 Toda tabla de negocio lleva `tenantId`. Es la columna de aislamiento y la primera
@@ -225,6 +228,12 @@ Congela `nameSnapshot` y `unitPriceCents` al momento del pedido. Si mañana camb
 la carta, el histórico y los informes siguen siendo fieles a lo que realmente se
 vendió y a qué precio.
 
+`variant` guarda con qué variante de prueba A/B se **cobró** esa línea. Se podría
+deducir del `guestId` del pedido, y no se deduce a propósito: el borrado de datos
+del comensal pone ese `guestId` en `null` —y ahí el pedido quedaría sin atribuir—
+y si alguna vez cambia la función de asignación, los pedidos viejos seguirían
+diciendo la verdad. Lo que se cobró no se deduce: se registra.
+
 ### `Payment` (1-1 con Order)
 
 `provider`, `providerRef`, `status` y el `rawPayload` serializado de la pasarela
@@ -237,8 +246,14 @@ para auditoría.
 ### `AnalyticsEvent`
 
 Una fila por interacción: `type`, `dishId` opcional, `sessionId`, `durationMs`
-(tiempo con el modelo 3D en pantalla), `query` (sólo en búsquedas) y `value`
-(campo numérico genérico: cantidad de resultados, unidades agregadas…).
+(tiempo con el modelo 3D en pantalla), `query` (sólo en búsquedas), `value`
+(campo numérico genérico: cantidad de resultados, unidades agregadas…) y
+`variant`, que es la variante de prueba A/B que el dispositivo tenía servida.
+
+`variant` **la manda el cliente**, y eso es deliberado: deducirla en el servidor
+exigiría recibir el `guestId` junto con cada evento, y que ese vínculo no exista
+es lo que mantiene esta tabla anónima de verdad (ver `modules/privacy/service.ts`).
+Un cliente podría mentir, pero sólo ensuciaría su propio balde.
 
 Índices pensados para los tres informes que existen:
 
@@ -282,6 +297,53 @@ menú digital.
 
 ---
 
+## Pruebas A/B de carta
+
+### `Experiment`
+
+Una prueba sobre un plato: `field` (`DESCRIPTION` | `PRICE`), `valueB`, `status`
+(`RUNNING` | `STOPPED`), `startedAt`, `stoppedAt` y `winner`.
+
+**La variante A no se guarda**: A es lo que dice el plato en la base, así que si
+el restaurante le cambia el precio en medio de la prueba, el control lo sigue
+solo —que es lo que uno quiere.
+
+Un plato puede tener **una** prueba corriendo a la vez, y eso lo garantiza un
+índice único **parcial** que se crea a mano en la migración
+`20261004135500_una_prueba_por_plato`:
+
+```sql
+CREATE UNIQUE INDEX "Experiment_una_corriendo_por_plato"
+  ON "Experiment" ("dishId") WHERE "status" = 'RUNNING';
+```
+
+A mano porque Prisma no sabe expresar índices parciales, y un
+`@@unique([dishId, status])` del esquema impediría además tener dos pruebas
+*cerradas* del mismo plato, que es justo el historial que uno quiere conservar.
+
+La asignación de variantes **no se guarda en ninguna tabla**: sale de un hash
+determinista del `guestId` y del id del experimento. Ver
+`modules/experiments/service.ts` para por qué eso es lo que garantiza que el
+comensal pague el precio que vio.
+
+---
+
+## Botón de arrepentimiento
+
+### `RevocationRequest`
+
+Pedidos de revocación de una contratación (Res. 424/2020 SCI): `code`, `name`,
+`email`, `phone`, `reference`, `detail` y `notifiedAt`.
+
+**No tiene `tenantId`, y es la única tabla de negocio que no lo tiene.** La
+resolución prohíbe exigirle al consumidor registrarse o hacer cualquier otro
+trámite para usar el botón, así que quien lo usa puede no tener cuenta, puede no
+acordarse con qué correo la abrió, o puede ser alguien a quien le cobraron sin
+haber contratado. Pedir un `tenantId` sería justamente el trámite que la norma no
+permite pedir.
+
+---
+
 ## Decisiones transversales
 
 | Decisión | Motivo |
@@ -293,3 +355,4 @@ menú digital.
 | `cuid()` como clave | No revela volumen de negocio (un id secuencial sí: `/orders/1234` dice cuántos pedidos van). |
 | `onDelete: Cascade` desde `Tenant` | Dar de baja un restaurante limpia todo lo suyo en una operación. |
 | `onDelete: Restrict` en `Dish` desde `OrderItem` | Impide borrar un plato que figura en un pedido. |
+| Índice único parcial para `Experiment` | Una prueba corriendo por plato, sin perder el historial de las cerradas. Va en SQL a mano porque Prisma no los expresa. |

@@ -12,6 +12,7 @@ import { ReviewForm, ReviewList } from '../../components/Reviews.js';
 import { Badge3D, EmptyState, ErrorState, Spinner, Stars } from '../../components/ui.js';
 import { AnalyticsEvent, track, trackOnce } from '../../lib/analytics.js';
 import { publicApi } from '../../lib/api.js';
+import { getGuestId } from '../../lib/session.js';
 import { money } from '../../lib/format.js';
 import { allergenLabel, dietLabel } from '../../lib/i18n.js';
 import { useAsync } from '../../lib/useAsync.js';
@@ -27,7 +28,7 @@ export function DishPage(): ReactNode {
   const toast = useToast();
 
   const { data: dish, loading, error, reload } = useAsync(
-    (signal) => publicApi.dish(slug, dishId, locale, signal),
+    (signal) => publicApi.dish(slug, dishId, locale, signal, getGuestId()),
     [slug, dishId, locale],
   );
 
@@ -92,43 +93,40 @@ export function DishPage(): ReactNode {
       ) : null}
 
       <header className="stack stack-3">
-        <div className="row-between" style={{ alignItems: 'flex-start' }}>
-          <div className="stack stack-2 grow">
-            <h1>{dish.name}</h1>
-            <div className="row wrap" style={{ gap: 6 }}>
-              {dish.has3d && <Badge3D />}
-              {dish.dietTags.map((tag) => (
-                <span key={tag} className="badge">
-                  {dietLabel(tag, locale)}
-                </span>
-              ))}
-              {dish.translated && (
-                <span className="badge" title={t('dish.translated')}>
-                  🌐 {t('dish.translated')}
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="stack" style={{ alignItems: 'flex-end', gap: 0 }}>
-            <span style={{ fontSize: '1.35rem', fontWeight: 700 }}>
-              {money(dish.priceCents, dish.currency, locale)}
+        <h1 className="dish-title">{dish.name}</h1>
+
+        <div className="row wrap" style={{ gap: 10 }}>
+          <span className="dish-price-lg">
+            {money(dish.priceCents, dish.currency, locale)}
+          </span>
+          {dish.compareAtPriceCents && dish.compareAtPriceCents > dish.priceCents && (
+            <span className="dish-price-old">
+              {money(dish.compareAtPriceCents, dish.currency, locale)}
             </span>
-            {dish.compareAtPriceCents && dish.compareAtPriceCents > dish.priceCents && (
-              <span className="dish-price-old">
-                {money(dish.compareAtPriceCents, dish.currency, locale)}
+          )}
+          {dish.rating.count > 0 && (
+            <span className="row" style={{ gap: 6 }}>
+              <Stars value={dish.rating.average} size={14} />
+              <span className="small nums secondary">
+                {dish.rating.average} · {dish.rating.count}
               </span>
-            )}
-          </div>
+            </span>
+          )}
         </div>
 
-        {dish.rating.count > 0 && (
-          <div className="row" style={{ gap: 7 }}>
-            <Stars value={dish.rating.average} size={14} />
-            <span className="small nums secondary">
-              {dish.rating.average} · {dish.rating.count}
+        <div className="row wrap" style={{ gap: 6 }}>
+          {dish.has3d && <Badge3D />}
+          {dish.dietTags.map((tag) => (
+            <span key={tag} className="badge badge-quiet">
+              {dietLabel(tag, locale)}
             </span>
-          </div>
-        )}
+          ))}
+          {dish.translated && (
+            <span className="badge badge-quiet" title={t('dish.translated')}>
+              🌐 {t('dish.translated')}
+            </span>
+          )}
+        </div>
 
         {dish.description && <p className="secondary">{dish.description}</p>}
 

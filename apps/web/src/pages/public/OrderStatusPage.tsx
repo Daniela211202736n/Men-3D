@@ -97,39 +97,29 @@ export function OrderStatusPage(): ReactNode {
         </div>
       )}
 
-      {/* Progreso: el estado actual se marca con texto y con peso, no solo con
-          color, para que se entienda sin distinguir tonos. */}
-      <ol className="stack stack-2" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+      {/* Progreso. El estado actual se marca con texto y con peso, no solo con
+          color, para que se entienda sin distinguir tonos; el riel que une los
+          pasos es lo que convierte cinco renglones en una linea de tiempo. */}
+      <ol className="pasos">
         {STEPS.map((step, index) => {
           const done = currentIndex >= index && currentIndex !== -1;
           const current = currentIndex === index;
           return (
-            <li key={step} className="row" style={{ gap: 10 }}>
-              <span
-                aria-hidden="true"
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: '50%',
-                  flex: '0 0 auto',
-                  display: 'grid',
-                  placeItems: 'center',
-                  fontSize: 11,
-                  color: done ? 'var(--brand-ink)' : 'var(--text-muted)',
-                  background: done ? 'var(--brand)' : 'var(--surface-3)',
-                }}
-              >
+            <li
+              key={step}
+              className={`paso${done ? ' is-hecho' : ''}${current ? ' is-actual' : ''}`}
+              aria-current={current ? 'step' : undefined}
+            >
+              <span className="paso-marca" aria-hidden="true">
                 {done ? '✓' : index + 1}
               </span>
-              <span className={current ? 'bold' : 'secondary'}>
-                {t(`order.status.${step}`)}
-              </span>
+              <span className="paso-texto">{t(`order.status.${step}`)}</span>
             </li>
           );
         })}
       </ol>
 
-      <section className="card card-pad stack stack-2">
+      <section className="card card-pad stack stack-2 resumen">
         {order.items.map((item) => (
           <div key={item.id} className="row-between small">
             <span className="secondary">
@@ -141,7 +131,7 @@ export function OrderStatusPage(): ReactNode {
         <hr className="divider" />
         <div className="row-between">
           <span className="bold">{t('cart.total')}</span>
-          <span className="bold nums">
+          <span className="total-grande nums">
             {money(order.totalCents, order.currency, locale)}
           </span>
         </div>

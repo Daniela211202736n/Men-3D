@@ -57,7 +57,13 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      - name: Generar los modelos 3D de ejemplo
+
+      - name: Instalar Chromium
+        # Antes de los modelos y no junto al end-to-end: `models:sample` tambien
+        # renderiza la imagen de cada plato abriendo el modelo en el navegador.
+        run: npx playwright install --with-deps chromium
+
+      - name: Generar los modelos 3D de ejemplo y sus imagenes
         run: npm run models:sample
 
       - name: Compilar el paquete compartido
@@ -93,8 +99,6 @@ jobs:
       - name: Auditoría de dependencias
         run: npm audit --audit-level=high
 
-      - name: Instalar Chromium para el end-to-end
-        run: npx playwright install --with-deps chromium
 
       - name: Datos de demostración
         # El recorrido del comensal necesita una carta cargada.

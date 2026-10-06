@@ -63,10 +63,29 @@ const schema = z.object({
    */
   REDIS_URL: z.string().url().optional(),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
+  /**
+   * Peticiones al boton de arrepentimiento por IP cada diez minutos.
+   *
+   * Cinco le sobran a una persona que se arrepiente. Es configurable por la
+   * misma razon que el de autenticacion: el recorrido de navegador manda
+   * formularios de verdad y el contador vive en el servidor, asi que correrlo
+   * dos veces seguidas con el limite de produccion da un falso rojo.
+   */
+  REVOCATION_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   MAIL_DRIVER: z.enum(['log', 'resend']).default('log'),
   /** Remitente verificado, p. ej. "Men-3D <hola@tu-dominio.com>". */
   MAIL_FROM: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
+  /**
+   * Casilla que recibe los pedidos del boton de arrepentimiento.
+   *
+   * La Res. 424/2020 obliga a informarle al consumidor el codigo de revocacion
+   * dentro de las 24 horas, y eso lo hace el sistema solo. Pero HONRAR la
+   * revocacion —dar de baja y reintegrar— es trabajo de una persona, y sin esta
+   * casilla nadie se entera de que hay un pedido esperando. Sin definirla, el
+   * pedido queda igual guardado en la base y el aviso se escribe en el log.
+   */
+  LEGAL_EMAIL: z.string().email().optional(),
 
   // --- almacenamiento de modelos 3D e imagenes -----------------------------
   /**
@@ -96,6 +115,24 @@ const schema = z.object({
    * arma la URL del bucket, que funciona pero no pasa por cache de borde.
    */
   CDN_PUBLIC_URL: z.string().url().optional(),
+
+  /**
+   * Quien convierte la foto de un plato en un modelo 3D.
+   *
+   * `none` —el valor por defecto— deja la funcion apagada y explicada en el
+   * panel. Es el estado correcto para quien no contrato nada: subir un GLB
+   * hecho aparte sigue funcionando, y es el camino que no cuesta plata.
+   *
+   * Con `meshy` cada plato generado consume creditos del proveedor, que se
+   * pagan. No es una funcion que convenga dejar prendida sin saberlo.
+   *
+   * `mock` devuelve un cubo gris sin hablar con nadie: sirve para desarrollo y
+   * para las pruebas de navegador, y se niega a arrancar en produccion.
+   */
+  MODEL3D_PROVIDER: z.enum(['none', 'mock', 'meshy']).default('none'),
+  MESHY_API_KEY: z.string().optional(),
+  /** Version del modelo del proveedor: `latest`, `meshy-6`, `meshy-5`. */
+  MESHY_AI_MODEL: z.string().default('latest'),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -162,6 +199,21 @@ if (env.STORAGE_DRIVER === 's3') {
   }
 }
 
+if (isProduction && env.MODEL3D_PROVIDER === 'mock') {
+  // Un restaurante que le saca una foto a una milanesa y recibe un cubo gris no
+  // vuelve a tocar el boton nunca mas.
+  throw new Error(
+    'MODEL3D_PROVIDER=mock en produccion: genera un cubo de prueba, no un modelo. ' +
+      'Usa `meshy` con su clave, o `none` para ofrecer solo la subida manual.',
+  );
+}
+
+if (env.MODEL3D_PROVIDER === 'meshy' && !env.MESHY_API_KEY) {
+  throw new Error(
+    'MODEL3D_PROVIDER=meshy requiere MESHY_API_KEY. Ver docs/DEPLOY.md.',
+  );
+}
+
 if (env.MAIL_DRIVER === 'resend') {
   const faltantes: string[] = [];
   if (!env.RESEND_API_KEY) faltantes.push('RESEND_API_KEY');
@@ -197,3 +249,6 @@ export const mercadoPagoIsSandbox =
 
 /** La IA es opcional: sin clave el sistema degrada a reglas deterministas. */
 export const aiEnabled = Boolean(env.ANTHROPIC_API_KEY);
+
+/** `true` cuando hay con que convertir una foto en un modelo 3D. */
+export const model3dEnabled = env.MODEL3D_PROVIDER !== 'none';

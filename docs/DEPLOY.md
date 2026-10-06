@@ -91,6 +91,7 @@ se pierden al recrearlo.
 | Variable | Valor |
 | --- | --- |
 | `AUTH_RATE_LIMIT_MAX` | Intentos de autenticación por IP cada 5 minutos (por defecto 20) |
+| `REVOCATION_RATE_LIMIT_MAX` | Pedidos del botón de arrepentimiento por IP cada 10 minutos (por defecto 5) |
 
 Cubre login, registro y recuperación de contraseña. El valor por defecto frena
 la fuerza bruta sin molestar a nadie, con una salvedad: el límite es **por IP**,
@@ -104,6 +105,15 @@ mucho personal que entra al mismo tiempo —un cambio de turno— conviene subir
 | `MAIL_DRIVER` | `resend` en producción; `log` solo en desarrollo |
 | `MAIL_FROM` | Remitente, en un dominio verificado en Resend |
 | `RESEND_API_KEY` | Clave de la API de Resend |
+| `LEGAL_EMAIL` | Casilla que recibe los pedidos del botón de arrepentimiento |
+
+**`LEGAL_EMAIL` conviene definirla.** La Res. 424/2020 obliga a informarle al
+consumidor su código de revocación dentro de las 24 horas, y eso lo hace el
+sistema solo —en pantalla y por correo—. Pero *honrar* la revocación, es decir
+dar de baja y reintegrar, lo hace una persona, y sin esta casilla nadie se
+entera de que hay un pedido esperando: queda guardado en la tabla
+`RevocationRequest` y el aviso se escribe en el log. Ver
+[legal/README.md](legal/README.md).
 
 Con `MAIL_DRIVER=log` la API no envía nada: imprime el correo entero en la
 consola. En desarrollo eso es lo cómodo —el enlace de recuperación sale listo
@@ -117,6 +127,52 @@ olvide la clave.
 
 El enlace del correo se construye sobre `PUBLIC_WEB_URL`, así que si esa
 variable está mal, los enlaces llegan apuntando a ninguna parte.
+
+### Modelos 3D a partir de una foto
+
+| Variable | Valor |
+| --- | --- |
+| `MODEL3D_PROVIDER` | `none` (por defecto) o `meshy` |
+| `MESHY_API_KEY` | Clave de la API de Meshy, si se usa ese proveedor |
+| `MESHY_AI_MODEL` | Versión del modelo: `latest` (por defecto), `meshy-6`, `meshy-5` |
+
+Con esto configurado, el restaurante le saca una foto al plato desde el panel y
+el modelo 3D aparece solo un par de minutos después. Sin esto, la función no se
+ofrece y los platos se cargan subiendo un GLB hecho aparte, que es el camino que
+no cuesta nada.
+
+**Esto cuesta plata por uso.** Cada modelo generado consume créditos del
+proveedor —del orden de 20 a 30 por plato, que a los precios de hoy son unos
+20 a 30 centavos de dólar—. Son pocos centavos por plato, pero una carta de
+sesenta platos generada dos veces ya es una cifra, y el botón está en un
+celular dentro de un restaurante. Por eso hay tres frenos y conviene conocerlos:
+
+1. La función está detrás de la *feature* `PHOTO_TO_3D`, que no incluye el plan
+   gratis.
+2. Un plato no puede tener dos modelos generándose a la vez. El guard es un
+   índice único parcial en la base (`ModelJob_uno_en_curso_por_plato`), no un
+   `if`: dos toques del botón no pueden cobrar dos veces.
+3. La ruta tiene su propio límite, más duro que el general de la API: 12 fotos
+   por hora y por IP.
+
+**El alta de la feature no es automática en una base ya desplegada.** Las
+*features* de cada plan viven en la tabla `Plan`, así que después de migrar hay
+que volver a aplicar el catálogo:
+
+```bash
+npm run db:plans:prod
+```
+
+Sin eso, el panel le dice a todos los restaurantes que la función no está en su
+plan.
+
+**La alternativa gratis, que para muchos casos da mejor resultado.** Un celular
+moderno escanea un objeto real mucho mejor de lo que cualquier modelo reconstruye
+desde una sola foto: aplicaciones como Polycam o Scaniverse —y Object Capture en
+iPhone— generan un GLB dando una vuelta alrededor del plato. Ese archivo se sube
+desde el mismo editor y no consume créditos de nadie. La foto única es para
+cuando hay sesenta platos y poco tiempo; el escaneo, para los cinco platos que
+venden.
 
 ### Pagos
 
@@ -349,7 +405,36 @@ CDN_PUBLIC_URL=https://cdn.tu-dominio.com
 
 ## Comprobar que quedó bien configurado
 
-Dos sondas que dicen qué falta, nunca qué hay:
+### Un comando, antes de darle la dirección al primer restaurante
+
+```bash
+npm run verificar:prod -w @men3d/api          # dentro de la imagen
+npm run verificar                             # desde el fuente, en desarrollo
+npm run verificar -- --enviar-a vos@dominio   # y manda un correo de prueba
+```
+
+**Habla con los servicios de verdad**, que es la diferencia con mirar si las
+variables están puestas: una variable con el valor equivocado se ve exactamente
+igual que una correcta. Verifica, en este orden:
+
+| Qué | Cómo |
+| --- | --- |
+| Base de datos | Conecta, las migraciones corrieron y el catálogo de planes está cargado. |
+| MercadoPago | Pregunta a su API quién es el dueño del token. Avisa **en rojo** si es un token `TEST-` y `NODE_ENV=production`: con ese token los cobros "funcionan" y no entra un peso. |
+| Resend | Valida la clave y comprueba que el dominio de `MAIL_FROM` esté **verificado**, que es el fallo que rechaza cada envío sin que nadie lo mire. |
+| Bucket S3 | Hace el viaje completo: firma el permiso, sube con la URL firmada, **lee por la URL pública** —la que termina en el celular del comensal— y borra. Comprueba que el borrado pasó de verdad, no que no haya dado error. |
+| Redis | Conecta y responde. |
+
+Lo que **no** hace es cobrar: una transacción real hay que hacerla a mano una
+vez, y está en [LANZAMIENTO.md](LANZAMIENTO.md).
+
+Sale con código distinto de cero si algo falla, así que sirve en un pipeline de
+despliegue. Los avisos (`!`) no lo hacen fallar: son cosas que funcionan y
+conviene saber, como que no haya CDN delante del bucket.
+
+### Las sondas, para un monitor
+
+Dicen qué falta, nunca qué hay:
 
 ```bash
 curl https://tu-api/api/payments/webhook/mercadopago/health

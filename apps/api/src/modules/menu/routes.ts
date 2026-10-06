@@ -65,7 +65,11 @@ export default async function publicRoutes(app: FastifyInstance): Promise<void> 
       locale: typeof raw.locale === 'string' && isLocale(raw.locale) ? raw.locale : undefined,
     });
 
-    const menu = await getMenu(tenant, query);
+    // El `guestId` viaja en la query y solo se usa para resolver las pruebas
+    // A/B. No se guarda, no se registra en la analitica y no identifica a
+    // nadie en el servidor: entra, decide una variante y se descarta.
+    const guestId = typeof raw.guestId === 'string' ? raw.guestId : undefined;
+    const menu = await getMenu(tenant, query, guestId);
 
     // Una busqueda sin resultados es informacion valiosa para el dueño: queda
     // registrada con la cantidad de coincidencias en `value`.
@@ -88,8 +92,8 @@ export default async function publicRoutes(app: FastifyInstance): Promise<void> 
   app.get('/dishes/:dishId', async (request) => {
     const tenant = tenantOf(request);
     const { dishId } = request.params as { dishId: string };
-    const raw = request.query as { locale?: string };
-    const dish = await getDishDetail(tenant, dishId, raw.locale);
+    const raw = request.query as { locale?: string; guestId?: string };
+    const dish = await getDishDetail(tenant, dishId, raw.locale, raw.guestId);
     if (!dish) throw notFound('Plato');
     return dish;
   });

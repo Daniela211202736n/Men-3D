@@ -1,5 +1,81 @@
 /** Piezas chicas reutilizadas en toda la app. */
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+
+/**
+ * Miniatura de un plato.
+ *
+ * Es un componente y no un `<img>` por tres cosas que no se ven en el markup:
+ *
+ *  - los renders de los modelos llegan con fondo transparente, asi que debajo
+ *    va un degradado; sobre un plano quedan recortados contra la nada;
+ *  - una foto que no carga —un CDN con hipo, una URL vieja— no puede dejarle al
+ *    comensal el icono de imagen rota del navegador;
+ *  - sin foto hay que decir algo igual, y lo que dice es un plato dibujado, con
+ *    el cubo encima si ademas hay modelo 3D.
+ *
+ * Estaba resuelto solo en la fila de la carta. Esto lo pone tambien en el
+ * carrito, que es donde el comensal decide si confirma.
+ */
+export function Miniatura({
+  src,
+  has3d = false,
+  size = 112,
+  radius,
+}: {
+  src?: string | null;
+  has3d?: boolean;
+  size?: number;
+  radius?: number;
+}): ReactNode {
+  const [rota, setRota] = useState(false);
+  return (
+    <span
+      className="dish-thumb"
+      style={{ width: size, height: size, ...(radius ? { borderRadius: radius } : {}) }}
+    >
+      {src && !rota ? (
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          width={size}
+          height={size}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={() => setRota(true)}
+        />
+      ) : (
+        <PlatoGlifo has3d={has3d} size={Math.round(size * 0.38)} />
+      )}
+    </span>
+  );
+}
+
+/** El plato dibujado del respaldo; con el cubo si el plato tiene modelo. */
+export function PlatoGlifo({
+  has3d,
+  size = 40,
+}: {
+  has3d: boolean;
+  size?: number;
+}): ReactNode {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+      style={{ color: 'var(--text-muted)' }}
+    >
+      <ellipse cx="24" cy="30" rx="16" ry="6" />
+      <ellipse cx="24" cy="29" rx="10" ry="3.4" opacity="0.5" />
+      {has3d && <path d="M24 10l8 4.5v9L24 28l-8-4.5v-9z" />}
+    </svg>
+  );
+}
 
 export function Stars({
   value,

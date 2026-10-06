@@ -62,6 +62,31 @@ carta tarda y el visor se siente roto.
 costo que más se dispara acá: cada comensal que abre un plato descarga el
 modelo. Los pasos están en [DEPLOY.md § El bucket y el CDN](DEPLOY.md).
 
+### 4. Generador de modelos 3D (opcional, y se puede dejar para después)
+
+Esto es lo que convierte "sacale una foto al plato" en un modelo 3D. **No es
+obligatorio para salir**: sin esto, los restaurantes cargan sus platos subiendo
+un GLB hecho aparte, que funciona igual y no cuesta nada.
+
+Si lo querés desde el día uno: una cuenta en [Meshy](https://meshy.ai), su
+`MESHY_API_KEY` y `MODEL3D_PROVIDER=meshy`. El alta es inmediata y el plan
+gratis alcanza para probar unos pocos platos.
+
+**Es el único proveedor de la lista que cobra por uso del cliente.** MercadoPago
+cobra comisión sobre lo que se vende, Resend y R2 tienen planes fijos; esto se
+consume por plato generado, del orden de 20 a 30 centavos de dólar cada uno. Si
+vas a ofrecerlo, decidí antes si entra en el abono o se cobra aparte: es una
+decisión comercial, no técnica, y conviene tomarla antes de que un restaurante
+genere su carta entera.
+
+Antes de prenderlo, mirá la alternativa gratis en
+[DEPLOY.md § Modelos 3D a partir de una foto](DEPLOY.md): un escaneo con el
+celular da mejor resultado que una sola foto, y no consume créditos.
+
+Si lo activás, acordate de completar `PROVEEDOR_3D` en
+`apps/web/src/legal/empresa.ts`: pasa a ser un tercero que recibe las fotos de
+los platos y tiene que figurar en la política de privacidad.
+
 ---
 
 ## Decisiones que son tuyas, no técnicas
@@ -69,14 +94,24 @@ modelo. Los pasos están en [DEPLOY.md § El bucket y el CDN](DEPLOY.md).
 Resolvelas antes de desplegar, porque cambian datos que después hay que migrar.
 
 - **Los precios.** Los del código son los de la demostración: $59.000 por mes y
-  $199.000 de configuración inicial. Están en la tabla `Plan` y son una decisión
-  comercial, no una constante.
+  $199.000 de configuración inicial. Se cambian en
+  `apps/api/src/modules/plans/catalogo.ts` y se aplican con `npm run db:plans`
+  (o `db:plans:prod` dentro de la imagen). Son una decisión comercial, no una
+  constante.
 - **Qué incluye cada plan.** `PLAN_FEATURES` en `packages/shared/src/enums.ts`.
+  Ojo con `PHOTO_TO_3D`: es la única *feature* que le cuesta plata a quien opera
+  la plataforma cada vez que se usa.
 - **La moneda y el país** de cada restaurante.
-- **La política de privacidad y los términos.** El mecanismo está hecho
-  —consentimiento que corta de verdad, exportación y borrado de datos— pero el
-  texto lo tiene que escribir alguien que conozca el marco legal de donde
-  operes. Ver [UX-FLOWS.md § F](UX-FLOWS.md).
+- **La política de privacidad y los términos.** Hay **borradores escritos y
+  publicados** en `/legal/privacidad`, `/legal/terminos` y
+  `/legal/terminos-comensal`, redactados contra el marco argentino (Ley 25.326,
+  Ley 24.240) y fieles a lo que el sistema hace de verdad. Lo que falta son
+  datos: unos los completás vos en `apps/web/src/legal/empresa.ts` y otros los
+  tiene que escribir un abogado, porque definen responsabilidad. Mientras
+  falten, la página los lista en pantalla en vez de publicar un texto con
+  agujeros. El botón de arrepentimiento que exige la Res. 424/2020 **ya está
+  implementado**; acordate de definir `LEGAL_EMAIL` para que alguien se entere
+  de los pedidos. Todo en [legal/README.md](legal/README.md).
 
 ---
 
@@ -116,9 +151,11 @@ Para el primer cliente, un VPS alcanza y sobra.
    deshabilitados —ver [DEPLOY.md § Migraciones](DEPLOY.md).
 4. **Las imágenes.** `docker compose -f docker-compose.yml -f docker-compose.apps.yml build`
    y publicalas en un registro.
-5. **Levantar y comprobar.** Las sondas de
-   [DEPLOY.md § Comprobar que quedó bien configurado](DEPLOY.md) dicen qué
-   falta, nunca qué hay.
+5. **Levantar y comprobar.** `npm run verificar:prod -w @men3d/api` dentro de
+   la imagen: habla con MercadoPago, Resend y el bucket de verdad y te dice qué
+   anda y qué falta, con el arreglo de cada cosa. Es el momento de correrlo
+   —antes de darle la dirección al primer restaurante, no después. Ver
+   [DEPLOY.md § Comprobar que quedó bien configurado](DEPLOY.md).
 6. **El respaldo programado.** `scripts/backup.sh` en un cron, y
    **sincronizá las copias fuera de esa máquina**: una copia en el mismo disco
    que la base no sobrevive a lo que más probablemente pase.
